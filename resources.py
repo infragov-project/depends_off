@@ -4,6 +4,9 @@ class Resource:
         self.name = name
         self.range = range
 
+    def id(self):
+        return f'{self.type}.{self.name}'
+
     def __str__(self):
         return f'{self.type}.{self.name} ({self.range})'
 
