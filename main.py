@@ -1,5 +1,5 @@
 from parser import Parser
-from graph import Graph
+from graph import DAG, CycleError
 
 
 # Parse the Terraform file
@@ -15,9 +15,28 @@ for dependency in dependencies: print(dependency)
 print()
 
 
+# Check if the full dependency graph is acyclic
+
+graph = DAG()
+
+resources_to_node = dict()
+for i, resource in enumerate(resources):
+    graph.node(i)
+    resources_to_node[resource.id()] = i
+
+for dependency in dependencies:
+    u = resources_to_node[dependency.dependee]
+    v = resources_to_node[dependency.depended]
+
+    try: graph.edge(u, v)
+    except CycleError:
+        print(f'the dependency graph has a cycle: cycle detected on {dependency}')
+        exit(1)
+
+
 # Build a dependency graph using only implicit dependencies
 
-graph = Graph()
+graph = DAG()
 
 resources_to_node = dict()
 for i, resource in enumerate(resources):
@@ -46,7 +65,7 @@ for dependency in dependencies:
         redundant_dependencies.append(dependency)
 
 if len(redundant_dependencies) == 0:
-    print('No redundant dependencies found.')
+    print('no redundant dependencies found')
 
 for dependency in redundant_dependencies:
-    print(f'Redundant dependency found: {dependency}')
+    print(f'redundant dependency found: {dependency}')

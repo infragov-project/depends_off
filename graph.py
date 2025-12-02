@@ -23,3 +23,12 @@ class Graph:
                 if self.dfs(neighbor, v, visited):
                     return True
         return False
+    
+class DAG(Graph):
+    def edge(self, u, v):
+        if self.path(v, u):
+            raise CycleError()
+        super().edge(u, v)
+
+class CycleError(Exception):
+    pass
