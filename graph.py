@@ -30,5 +30,34 @@ class DAG(Graph):
             raise CycleError()
         super().edge(u, v)
 
+    def toposort(self):
+        # Topological sort is done using DFS. A DFS is made for each unvisited
+        # node, and the nodes visited in a DFS are recorded. In each of those
+        # segments, a node comes before all of its children. This segment is
+        # thus in reverse topological order. If a node was not visited once a
+        # new segment starts, none of the previous nodes points to it, but it
+        # may point to one of them. As such, each new segment comes after all
+        # previous ones in the topological sort.
+        visited = set()
+        sorted = list()
+
+        for node in self.nodes:
+            if node not in visited:
+                segment = list()
+                self._toposort_dfs(node, visited, segment)
+                sorted += reversed(segment)
+        
+        return sorted
+    
+    def _toposort_dfs(self, u, visited, segment):
+        visited.add(u)
+        segment.append(u)
+
+        for neighbor in self.edges[u]:
+            if neighbor not in visited:
+                self._toposort_dfs(neighbor, visited, segment)
+
+        return segment
+
 class CycleError(Exception):
     pass
