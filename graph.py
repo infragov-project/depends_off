@@ -11,6 +11,9 @@ class Graph:
     def edge(self, u, v):
         self.edges[u].append(v)
     
+    def remove_edge(self, u, v):
+        self.edges[u].remove(v)
+    
     def path(self, u, v):
         return self.dfs(u, v, set())
 
@@ -32,7 +35,7 @@ class DAG(Graph):
 
     def toposort(self):
         # Topological sort is done using DFS. A DFS is made for each unvisited
-        # node, and the nodes visited in a DFS are recorded. In each of those
+        # node, and the nodes visited in the DFS are recorded. In each of those
         # segments, a node comes before all of its children. This segment is
         # thus in reverse topological order. If a node was not visited once a
         # new segment starts, none of the previous nodes points to it, but it
@@ -46,8 +49,11 @@ class DAG(Graph):
                 segment = list()
                 self._toposort_dfs(node, visited, segment)
                 sorted += reversed(segment)
-        
-        return sorted
+
+        self.topo_order = {node: i for i, node in enumerate(sorted)}
+    
+    def order(self, u):
+        return self.topo_order[u]
     
     def _toposort_dfs(self, u, visited, segment):
         visited.add(u)

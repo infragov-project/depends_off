@@ -15,7 +15,7 @@ for dependency in dependencies: print(dependency)
 print()
 
 
-# Check if the full dependency graph is acyclic
+# Build the full dependency graph and get its topological order
 
 graph = DAG()
 
@@ -33,23 +33,35 @@ for dependency in dependencies:
         print(f'the dependency graph has a cycle: cycle detected on {dependency}')
         exit(1)
 
+order = graph.toposort()
 
-# Build a dependency graph using only implicit dependencies
 
-graph = DAG()
+# Remove the explicit edges and add them one by one such that, when an edge is
+# added, all the edges that an alternative path might have used have already
+# been used.
 
-resources_to_node = dict()
-for i, resource in enumerate(resources):
-    graph.node(i)
-    resources_to_node[resource.id()] = i
+explicit_dependencies = [d for d in dependencies if d.explicit]
 
-for dependency in dependencies:
-    if dependency.explicit: continue
-
+for dependency in explicit_dependencies:
     u = resources_to_node[dependency.dependee]
     v = resources_to_node[dependency.depended]
-    graph.edge(u, v)
+    graph.remove_edge(u, v)
 
+# We'll order the edges such that they can be added one by one, respecting the
+# property above. An edge X = (a, b) comes before an endge Y = (c, d) if it
+# might be part of a path from c to d. As such, a <= c and b >= d in the
+# topological ordering.
+
+def dependency_to_key(dependency):
+    u = resources_to_node[dependency.dependee]
+    v = resources_to_node[dependency.depended]
+
+    a = graph.order(u)
+    b = graph.order(v)
+
+    return (a, -b)
+
+explicit_dependencies.sort(key = dependency_to_key)
 
 # Check if any of the explicit dependencies is redundant
 
@@ -63,6 +75,8 @@ for dependency in dependencies:
 
     if graph.path(u, v):
         redundant_dependencies.append(dependency)
+    
+    graph.edge(u, v)
 
 if len(redundant_dependencies) == 0:
     print('no redundant dependencies found')
