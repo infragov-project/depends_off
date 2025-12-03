@@ -1,23 +1,23 @@
 class Graph:
     def __init__(self):
-        self.nodes = set()
+        self.nodes: set[int] = set()
         # edges matches a node to a list of its outgoing edges
-        self.edges = dict()
+        self.edges: dict[int, list[int]] = dict()
 
-    def node(self, node):
+    def node(self, node: int):
         self.nodes.add(node)
         self.edges[node] = list()
     
-    def edge(self, u, v):
+    def edge(self, u: int, v: int):
         self.edges[u].append(v)
     
-    def remove_edge(self, u, v):
+    def remove_edge(self, u: int, v: int):
         self.edges[u].remove(v)
     
-    def path(self, u, v):
+    def path(self, u: int, v: int):
         return self.dfs(u, v, set())
 
-    def dfs(self, u, v, visited):
+    def dfs(self, u: int, v: int, visited: set[int]):
         if u == v: return True
 
         visited.add(u)
@@ -28,7 +28,7 @@ class Graph:
         return False
     
 class DAG(Graph):
-    def edge(self, u, v):
+    def edge(self, u: int, v: int):
         if self.path(v, u):
             raise CycleError()
         super().edge(u, v)
@@ -41,21 +41,21 @@ class DAG(Graph):
         # new segment starts, none of the previous nodes points to it, but it
         # may point to one of them. As such, each new segment comes after all
         # previous ones in the topological sort.
-        visited = set()
-        sorted = list()
+        visited: set[int] = set()
+        sorted: list[int] = list()
 
         for node in self.nodes:
             if node not in visited:
-                segment = list()
+                segment: list[int] = list()
                 self._toposort_dfs(node, visited, segment)
                 sorted += reversed(segment)
 
         self.topo_order = {node: i for i, node in enumerate(sorted)}
     
-    def order(self, u):
+    def order(self, u: int):
         return self.topo_order[u]
     
-    def _toposort_dfs(self, u, visited, segment):
+    def _toposort_dfs(self, u: int, visited: set[int], segment: list[int]):
         visited.add(u)
         segment.append(u)
 
