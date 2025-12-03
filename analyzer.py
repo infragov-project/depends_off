@@ -2,7 +2,15 @@ from resources import Resource, Dependency
 from graph import DAG
 
 class DependencyAnalyzer:
+    """
+    Class that creates a dependency graph and finds redundant dependencies.
+    """
+
     def __init__(self, resources: list[Resource], dependencies: list[Dependency]):
+        """
+        Initialize the dependency graph. A CycleError is raised if any of the
+        edges creates a cycle.
+        """
         self.resources = resources
         self.dependencies = dependencies
 
@@ -19,6 +27,10 @@ class DependencyAnalyzer:
             self.graph.edge(u, v)
 
     def redundant(self):
+        """
+        Retrieve the redundant explicit dependencies in the graph.
+        """
+
         # Some of the edges will be removed, but we need to keep the original
         # ordering of the graph
         self.graph.toposort()
@@ -35,7 +47,7 @@ class DependencyAnalyzer:
             self.graph.remove_edge(u, v)
 
         # Check if any of the explicit dependencies is redundant
-        explicit_dependencies.sort(key = self.dependency_to_key)
+        explicit_dependencies.sort(key = self._dependency_to_key)
         redundant_dependencies: list[Dependency] = list()
 
         for dependency in self.dependencies:
@@ -51,12 +63,16 @@ class DependencyAnalyzer:
 
         return redundant_dependencies
 
-    def dependency_to_key(self, dependency: Dependency):
-        # We'll order the edges such that they can be added one by one, and when
-        # one edge is inserted all the edges that an alternative path might have
-        # used have already been added to the graph. An edge X = (a, b) comes
-        # before an endge Y = (c, d) if it might be part of a path from c to d.
-        # As such, a <= c and b >= d in the topological ordering.
+    def _dependency_to_key(self, dependency: Dependency):
+        """
+        Transform a dependency into a sorting key, such that the edges can be
+        added one by one, and when one edge is inserted all the edges that an
+        alternative path might have used have already been added to the graph.
+        """
+
+        # An edge X = (a, b) comes before an endge Y = (c, d) if it might be
+        # part of a path from c to d. As such, a <= c and b >= d in the
+        # topological ordering.
 
         u = self.resources_to_node[dependency.dependee]
         v = self.resources_to_node[dependency.depended]

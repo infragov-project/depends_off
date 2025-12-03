@@ -7,18 +7,21 @@ from resources import Resource, Dependency, Range
 class Parser:
     @staticmethod
     def parse(filename: str):
+        """
+        Parse a Terraform file and extract resources and dependencies.
+        """
         with open(filename, 'r') as f:
             content: Any = hcl2.load(f, with_meta=True) # type: ignore
         
         resources: list[Resource] = list()
         dependencies: list[Dependency] = list()
 
-        for data in content['resource']: Parser.resource(data, resources, dependencies)
+        for data in content['resource']: Parser._resource(data, resources, dependencies)
 
         return (resources, dependencies)
     
     @staticmethod
-    def resource(data: Any, resources: list[Resource], dependencies: list[Dependency]):
+    def _resource(data: Any, resources: list[Resource], dependencies: list[Dependency]):
         rtype, metadata = next(iter(data.items()))
         name, details = next(iter(metadata.items()))
 
@@ -37,14 +40,14 @@ class Parser:
             value = metadata['value']
             if type(value) == list:
                 for v in value: # type: ignore
-                    dependency = Parser.dependency(v, resource, metadata, attribute == 'depends_on') # type: ignore
+                    dependency = Parser._dependency(v, resource, metadata, attribute == 'depends_on') # type: ignore
                     if dependency: dependencies.append(dependency)
             else:
-                dependency = Parser.dependency(value, resource, metadata, attribute == 'depends_on')
+                dependency = Parser._dependency(value, resource, metadata, attribute == 'depends_on')
                 if dependency: dependencies.append(dependency)
     
     @staticmethod
-    def dependency(value: str, resource: Resource, metadata: Any, explicit: bool):
+    def _dependency(value: str, resource: Resource, metadata: Any, explicit: bool):
         match = re.match(r'^\${(.*)}$', value)
         if not match:
             return None
