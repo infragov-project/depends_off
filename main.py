@@ -1,3 +1,4 @@
+from resources import Dependency
 from parser import Parser
 from graph import DAG, CycleError
 
@@ -19,7 +20,7 @@ print()
 
 graph = DAG()
 
-resources_to_node = dict()
+resources_to_node: dict[str, int] = dict()
 for i, resource in enumerate(resources):
     graph.node(i)
     resources_to_node[resource.id()] = i
@@ -52,7 +53,7 @@ for dependency in explicit_dependencies:
 # might be part of a path from c to d. As such, a <= c and b >= d in the
 # topological ordering.
 
-def dependency_to_key(dependency):
+def dependency_to_key(dependency: Dependency):
     u = resources_to_node[dependency.dependee]
     v = resources_to_node[dependency.depended]
 
@@ -65,7 +66,7 @@ explicit_dependencies.sort(key = dependency_to_key)
 
 # Check if any of the explicit dependencies is redundant
 
-redundant_dependencies = list()
+redundant_dependencies: list[Dependency] = list()
 
 for dependency in dependencies:
     if not dependency.explicit: continue
