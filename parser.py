@@ -1,23 +1,24 @@
 import re
 import hcl2
+from typing import Any
 
 from resources import Resource, Dependency, Range
 
 class Parser:
     @staticmethod
-    def parse(filename):
+    def parse(filename: str):
         with open(filename, 'r') as f:
-            content = hcl2.load(f, with_meta=True)
+            content: Any = hcl2.load(f, with_meta=True) # type: ignore
         
-        resources = list()
-        dependencies = list()
+        resources: list[Resource] = list()
+        dependencies: list[Dependency] = list()
 
         for data in content['resource']: Parser.resource(data, resources, dependencies)
 
         return (resources, dependencies)
     
     @staticmethod
-    def resource(data, resources, dependencies):
+    def resource(data: Any, resources: list[Resource], dependencies: list[Dependency]):
         rtype, metadata = next(iter(data.items()))
         name, details = next(iter(metadata.items()))
 
@@ -35,15 +36,15 @@ class Parser:
 
             value = metadata['value']
             if type(value) == list:
-                for v in value:
-                    dependency = Parser.dependency(v, resource, metadata, attribute == 'depends_on')
+                for v in value: # type: ignore
+                    dependency = Parser.dependency(v, resource, metadata, attribute == 'depends_on') # type: ignore
                     if dependency: dependencies.append(dependency)
             else:
                 dependency = Parser.dependency(value, resource, metadata, attribute == 'depends_on')
                 if dependency: dependencies.append(dependency)
     
     @staticmethod
-    def dependency(value, resource, metadata, explicit):
+    def dependency(value: str, resource: Resource, metadata: Any, explicit: bool):
         match = re.match(r'^\${(.*)}$', value)
         if not match:
             return None
