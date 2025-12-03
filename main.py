@@ -1,6 +1,5 @@
 from parser import Parser
-from graph import CycleError
-from analyzer import DependencyAnalyzer
+from analyzer import DependencyAnalyzer, DependencyAnalyzerError
 
 # Parse the Terraform file
 
@@ -16,8 +15,8 @@ print()
 # Search for redundant dependencies
 
 try: analyzer = DependencyAnalyzer(resources, dependencies)
-except CycleError:
-    print('error: the dependency graph contains a cycle')
+except DependencyAnalyzerError as e:
+    print(e)
     exit(1)
 
 redundant_dependencies = analyzer.redundant()

@@ -1,5 +1,5 @@
 from resources import Resource, Dependency
-from graph import DAG
+from graph import DAG, CycleError
 
 class DependencyAnalyzer:
     """
@@ -24,7 +24,11 @@ class DependencyAnalyzer:
         for dependency in self.dependencies:
             u = self.resources_to_node[dependency.dependee]
             v = self.resources_to_node[dependency.depended]
-            self.graph.edge(u, v)
+
+            try: self.graph.edge(u, v)
+            except CycleError: raise DependencyAnalyzerError(
+                f'the dependency graph has a cycle: cycle detected while adding {dependency}'
+            )
 
     def redundant(self):
         """
@@ -81,3 +85,6 @@ class DependencyAnalyzer:
         b = self.graph.order(v)
 
         return (a, -b)
+    
+class DependencyAnalyzerError(Exception):
+    pass
