@@ -2,3 +2,4 @@ env
 main.go
 test.tf
 __pycache__
+terrads-light
