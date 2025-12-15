@@ -3,7 +3,7 @@ from analyzer import DependencyAnalyzer, DependencyAnalyzerError
 
 # Parse the Terraform file
 
-resources, dependencies = Parser.parse('test.tf')
+resources, dependencies = Parser.parse('.')
 
 print('resources:')
 for resource in resources: print(resource)

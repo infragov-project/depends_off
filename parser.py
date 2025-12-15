@@ -1,12 +1,33 @@
 import re
 import hcl2
 from typing import Any
+from pathlib import Path
 
 from resources import Resource, Dependency, Range
 
 class Parser:
     @staticmethod
-    def parse(filename: str):
+    def parse(module_path: str):
+        """
+        Parse a Terraform module and extract resources and dependencies.
+        """
+        resources: list[Resource] = list()
+        dependencies: list[Dependency] = list()
+
+        # Terraform modules include only the .tf files in the directory, without
+        # recursing into subdirectories
+        for path in Path(module_path).iterdir():
+            if path.is_dir(): continue
+            if not path.name.endswith('.tf'): continue
+            
+            file_resources, file_dependencies = Parser.parse_file(f'{module_path}/{path.name}')
+            resources.extend(file_resources)
+            dependencies.extend(file_dependencies)
+
+        return resources, dependencies
+
+    @staticmethod
+    def parse_file(filename: str):
         """
         Parse a Terraform file and extract resources and dependencies.
         """
@@ -18,7 +39,7 @@ class Parser:
 
         for data in content['resource']: Parser._resource(data, resources, dependencies)
 
-        return (resources, dependencies)
+        return resources, dependencies
     
     @staticmethod
     def _resource(data: Any, resources: list[Resource], dependencies: list[Dependency]):
