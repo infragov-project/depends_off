@@ -64,20 +64,7 @@ class Parser:
         ))
         nodes.append(provider)
 
-        for attribute, metadata in data.items():
-            # Ignore line/column metadata
-            if attribute.startswith('__'):
-                continue
-
-            value = metadata['value']
-
-            if type(value) == list:
-                for v in value: # type: ignore
-                    dependency = Parser._dependency(v, provider, metadata, attribute == 'depends_on') # type: ignore
-                    if dependency: dependencies.append(dependency)
-            else:
-                dependency = Parser._dependency(value, provider, metadata, attribute == 'depends_on')
-                if dependency: dependencies.append(dependency)
+        Parser._dependencies(data, provider, dependencies)
 
     @staticmethod
     def _variable(data: Any, nodes: list[Node]):
@@ -103,20 +90,28 @@ class Parser:
         ))
         nodes.append(resource)
 
-        for attribute, metadata in data.items():
-            # Ignore line/column metadata
-            if attribute.startswith('__'):
-                continue
+        Parser._dependencies(data, resource, dependencies)
 
-            value = metadata['value']
+    @staticmethod
+    def _dependencies(data: Any, origin: Node, dependencies: list[Dependency], explicit: bool = False, metadata: Any = {}):
+        # An int has no dependencies
+        if type(data) == int:
+            pass
 
-            if type(value) == list:
-                for v in value: # type: ignore
-                    dependency = Parser._dependency(v, resource, metadata, attribute == 'depends_on') # type: ignore
-                    if dependency: dependencies.append(dependency)
-            else:
-                dependency = Parser._dependency(value, resource, metadata, attribute == 'depends_on')
-                if dependency: dependencies.append(dependency)
+        elif type(data) == str:
+            dependency = Parser._dependency(data, origin, metadata, explicit)
+            if dependency: dependencies.append(dependency)
+
+        elif type(data) == list:
+            for value in data: # type: ignore
+                Parser._dependencies(value, origin, dependencies, explicit, metadata)
+
+        else:
+            for attribute, metadata in data.items():
+                # Ignore line/column metadata
+                if attribute.startswith('__'): continue
+                Parser._dependencies(metadata, origin, dependencies, attribute == 'depends_on', data)
+
 
     @staticmethod
     def _dependency(value: str, origin: Node, metadata: Any, explicit: bool):
