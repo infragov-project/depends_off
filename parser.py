@@ -5,13 +5,16 @@ from typing import Any
 from terraform_graph import Node, Provider, Variable, Resource, Dependency, Range
 
 class Parser:
-    @staticmethod
-    def parse(module_path: str):
+    def __init__(self):
+        self.nodes: list[Node] = list()
+        self.dependencies: list[Dependency] = list()
+
+    def parse(self, module_path: str):
         """
         Parse a Terraform module and extract resources and dependencies.
         """
-        nodes: list[Node] = list()
-        dependencies: list[Dependency] = list()
+        self.nodes: list[Node] = list()
+        self.dependencies: list[Dependency] = list()
 
         # Terraform modules include only the .tf files in the directory, without
         # recursing into subdirectories
@@ -19,37 +22,27 @@ class Parser:
             if path.is_dir(): continue
             if not path.name.endswith('.tf'): continue
             
-            file_resources, file_dependencies = Parser.parse_file(str(path))
-            nodes.extend(file_resources)
-            dependencies.extend(file_dependencies)
+            self.parse_file(str(path))
 
-        return nodes, dependencies
+        return self.nodes, self.dependencies
 
-    @staticmethod
-    def parse_file(filename: str):
+    def parse_file(self, filename: str):
         """
         Parse a Terraform file and extract resources and dependencies.
         """
         with open(filename, 'r') as f:
             content: Any = hcl2.load(f, with_meta=True) # type: ignore
-        
-        nodes: list[Node] = list()
-        dependencies: list[Dependency] = list()
-
         if 'variable' in content:
-            for data in content['variable']: Parser._variable(data, nodes)
+            for data in content['variable']: self._variable(data)
 
         if 'provider' in content:
-            for data in content['provider']: Parser._provider(data, nodes, dependencies)
+            for data in content['provider']: self._provider(data)
 
         if 'resource' in content:
-            for data in content['resource']: Parser._resource(data, nodes, dependencies)
-
-        return nodes, dependencies
+            for data in content['resource']: self._resource(data)
     
-    @staticmethod
-    def _provider(data: Any, nodes: list[Node], dependencies: list[Dependency]):
-        provider, data = Parser._extract(data, 'name')
+    def _provider(self, data: Any):
+        provider, data = self._extract(data, 'name')
 
         if 'alias' in data:
             alias = data['alias']['value']
@@ -62,13 +55,12 @@ class Parser:
             data['__end_line__'],
             data['__end_column__']
         ))
-        nodes.append(provider)
+        self.nodes.append(provider)
 
-        Parser._dependencies(data, provider, dependencies)
+        self._dependencies(data, provider)
 
-    @staticmethod
-    def _variable(data: Any, nodes: list[Node]):
-        variable, data = Parser._extract(data, 'name')
+    def _variable(self, data: Any):
+        variable, data = self._extract(data, 'name')
 
         variable = Variable(variable['name'], Range(
             data['__start_line__'],
@@ -76,11 +68,10 @@ class Parser:
             data['__end_line__'],
             data['__end_column__']
         ))
-        nodes.append(variable)
+        self.nodes.append(variable)
     
-    @staticmethod
-    def _resource(data: Any, nodes: list[Node], dependencies: list[Dependency]):
-        resource, data = Parser._extract(data, 'type', 'name')
+    def _resource(self, data: Any):
+        resource, data = self._extract(data, 'type', 'name')
 
         resource = Resource(resource['type'], resource['name'], Range(
             data['__start_line__'],
@@ -88,49 +79,34 @@ class Parser:
             data['__end_line__'],
             data['__end_column__']
         ))
-        nodes.append(resource)
+        self.nodes.append(resource)
 
-        Parser._dependencies(data, resource, dependencies)
+        self._dependencies(data, resource)
 
-    @staticmethod
-    def _dependencies(data: Any, origin: Node, dependencies: list[Dependency], explicit: bool = False, metadata: Any = {}):
+    def _dependencies(self, data: Any, origin: Node, explicit: bool = False, metadata: Any = {}):
         # An int has no dependencies
         if type(data) == int:
             pass
 
         elif type(data) == str:
-            dependency = Parser._dependency(data, origin, metadata, explicit)
-            if dependency: dependencies.append(dependency)
+            self._dependency(data, origin, metadata, explicit)
 
         elif type(data) == list:
             for value in data: # type: ignore
-                Parser._dependencies(value, origin, dependencies, explicit, metadata)
+                self._dependencies(value, origin, explicit, metadata)
 
         else:
             for attribute, metadata in data.items():
                 # Ignore line/column metadata
                 if attribute.startswith('__'): continue
-                Parser._dependencies(metadata, origin, dependencies, explicit or attribute == 'depends_on', data)
+                self._dependencies(metadata, origin, explicit or attribute == 'depends_on', data)
 
+    def _dependency(self, value: str, origin: Node, metadata: Any, explicit: bool):
+        self._variable_dependency(value, origin, metadata, explicit)
+        self._provider_dependency(value, origin, metadata, explicit)
+        self._resource_dependency(value, origin, metadata, explicit)
 
-    @staticmethod
-    def _dependency(value: str, origin: Node, metadata: Any, explicit: bool):
-        dependency = Parser._variable_dependency(value, origin, metadata, explicit)
-        if dependency:
-            return dependency
-
-        dependency = Parser._provider_dependency(value, origin, metadata, explicit)
-        if dependency:
-            return dependency
-        
-        dependency = Parser._resource_dependency(value, origin, metadata, explicit)
-        if dependency:
-            return dependency
-
-        return None
-
-    @staticmethod
-    def _provider_dependency(value: str, origin: Node, metadata: Any, explicit: bool):
+    def _provider_dependency(self, value: str, origin: Node, metadata: Any, explicit: bool):
         match = re.match(r'^\${(.+?)\.(.+?)(\..+)?}$', value)
         if not match:
             return None
@@ -143,7 +119,7 @@ class Parser:
 
         if not dependee: return None
 
-        return Dependency(
+        self.dependencies.append(Dependency(
             origin.id,
             dependee.id,
             explicit,
@@ -153,10 +129,9 @@ class Parser:
                 metadata['__end_line__'],
                 metadata['__end_column__']
             )
-        )
+        ))
     
-    @staticmethod
-    def _variable_dependency(value: str, origin: Node, metadata: Any, explicit: bool):
+    def _variable_dependency(self, value: str, origin: Node, metadata: Any, explicit: bool):
         match = re.match(r'^\${var\.(.+?)(\..+)?}$', value)
         if not match:
             return None
@@ -166,7 +141,7 @@ class Parser:
 
         if not dependee: return None
 
-        return Dependency(
+        self.dependencies.append(Dependency(
             origin.id,
             dependee.id,
             explicit,
@@ -176,10 +151,9 @@ class Parser:
                 metadata['__end_line__'],
                 metadata['__end_column__']
             )
-        )
+        ))
     
-    @staticmethod
-    def _resource_dependency(value: str, origin: Node, metadata: Any, explicit: bool):
+    def _resource_dependency(self, value: str, origin: Node, metadata: Any, explicit: bool):
         match = re.match(r'^\${(.+?)\.(.+?)(\..+)?}$', value)
         if not match:
             return None
@@ -192,7 +166,7 @@ class Parser:
 
         if not dependee: return None
 
-        return Dependency(
+        self.dependencies.append(Dependency(
             origin.id,
             dependee.id,
             explicit,
@@ -202,10 +176,9 @@ class Parser:
                 metadata['__end_line__'],
                 metadata['__end_column__']
             )
-        )
+        ))
     
-    @staticmethod
-    def _extract(data: dict[Any, Any], *arguments: str):
+    def _extract(self, data: dict[Any, Any], *arguments: str):
         result: dict[str, Any] = dict()
 
         for argument in arguments:
