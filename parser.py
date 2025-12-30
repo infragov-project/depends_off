@@ -1,7 +1,7 @@
+from pathlib import Path
 import re
 import hcl2
 from typing import Any
-from pathlib import Path
 
 from resources import Resource, Dependency, Range
 
@@ -20,7 +20,7 @@ class Parser:
             if path.is_dir(): continue
             if not path.name.endswith('.tf'): continue
             
-            file_resources, file_dependencies = Parser.parse_file(f'{module_path}/{path.name}')
+            file_resources, file_dependencies = Parser.parse_file(str(path))
             resources.extend(file_resources)
             dependencies.extend(file_dependencies)
 
@@ -37,7 +37,8 @@ class Parser:
         resources: list[Resource] = list()
         dependencies: list[Dependency] = list()
 
-        for data in content['resource']: Parser._resource(data, resources, dependencies)
+        if 'resource' in content:
+            for data in content['resource']: Parser._resource(data, resources, dependencies)
 
         return resources, dependencies
     
