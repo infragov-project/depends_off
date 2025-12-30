@@ -36,11 +36,11 @@ class Parser:
         nodes: list[Node] = list()
         dependencies: list[Dependency] = list()
 
-        if 'provider' in content:
-            for data in content['provider']: Parser._provider(data, nodes)
-
         if 'variable' in content:
             for data in content['variable']: Parser._variable(data, nodes)
+
+        if 'provider' in content:
+            for data in content['provider']: Parser._provider(data, nodes, dependencies)
 
         if 'resource' in content:
             for data in content['resource']: Parser._resource(data, nodes, dependencies)
@@ -48,7 +48,7 @@ class Parser:
         return nodes, dependencies
     
     @staticmethod
-    def _provider(data: Any, nodes: list[Node]):
+    def _provider(data: Any, nodes: list[Node], dependencies: list[Dependency]):
         provider, data = Parser._extract(data, 'name')
 
         if 'alias' in data:
@@ -63,6 +63,21 @@ class Parser:
             data['__end_column__']
         ))
         nodes.append(provider)
+
+        for attribute, metadata in data.items():
+            # Ignore line/column metadata
+            if attribute.startswith('__'):
+                continue
+
+            value = metadata['value']
+
+            if type(value) == list:
+                for v in value: # type: ignore
+                    dependency = Parser._dependency(v, provider, metadata, attribute == 'depends_on') # type: ignore
+                    if dependency: dependencies.append(dependency)
+            else:
+                dependency = Parser._dependency(value, provider, metadata, attribute == 'depends_on')
+                if dependency: dependencies.append(dependency)
 
     @staticmethod
     def _variable(data: Any, nodes: list[Node]):
@@ -152,7 +167,6 @@ class Parser:
             return None
         
         variable_name = match[1]
-
         dependee = Variable.get_by_name(variable_name)
 
         if not dependee: return None
