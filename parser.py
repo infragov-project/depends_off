@@ -2,6 +2,7 @@ from pathlib import Path
 import re
 import hcl2
 from typing import Any
+from pprint import pprint
 
 from resources import Resource, Dependency, Range
 
@@ -44,22 +45,23 @@ class Parser:
     
     @staticmethod
     def _resource(data: Any, resources: list[Resource], dependencies: list[Dependency]):
-        rtype, metadata = next(iter(data.items()))
-        name, details = next(iter(metadata.items()))
+        resource, content = Parser._extract(data, 'type', 'name')
 
-        resource = Resource(rtype, name, Range(
-            details['__start_line__'],
-            details['__start_column__'],
-            details['__end_line__'],
-            details['__end_column__']
+        resource = Resource(resource['type'], resource['name'], Range(
+            content['__start_line__'],
+            content['__start_column__'],
+            content['__end_line__'],
+            content['__end_column__']
         ))
         resources.append(resource)
 
-        for attribute, metadata in details.items():
+        for attribute, metadata in content.items():
+            # Ignore line/column metadata
             if attribute.startswith('__'):
                 continue
 
             value = metadata['value']
+
             if type(value) == list:
                 for v in value: # type: ignore
                     dependency = Parser._dependency(v, resource, metadata, attribute == 'depends_on') # type: ignore
@@ -90,3 +92,14 @@ class Parser:
                 metadata['__end_column__']
             )
         )
+    
+    @staticmethod
+    def _extract(data: dict[Any, Any], *arguments: str):
+        result: dict[str, Any] = dict()
+
+        for argument in arguments:
+            k, v = next(iter(data.items()))
+            result[argument] = k
+            data = v
+
+        return result, data
