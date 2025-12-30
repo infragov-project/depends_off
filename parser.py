@@ -2,7 +2,6 @@ from pathlib import Path
 import re
 import hcl2
 from typing import Any
-from pprint import pprint
 
 from resources import Resource, Dependency, Range
 
@@ -64,26 +63,24 @@ class Parser:
 
             if type(value) == list:
                 for v in value: # type: ignore
-                    dependency = Parser._dependency(v, resource, metadata, attribute == 'depends_on') # type: ignore
+                    dependency = Parser._resource_dependency(v, resource, metadata, attribute == 'depends_on') # type: ignore
                     if dependency: dependencies.append(dependency)
             else:
-                dependency = Parser._dependency(value, resource, metadata, attribute == 'depends_on')
+                dependency = Parser._resource_dependency(value, resource, metadata, attribute == 'depends_on')
                 if dependency: dependencies.append(dependency)
     
     @staticmethod
-    def _dependency(value: str, resource: Resource, metadata: Any, explicit: bool):
-        match = re.match(r'^\${(.*)}$', value)
+    def _resource_dependency(value: str, origin: Resource, metadata: Any, explicit: bool):
+        match = re.match(r'^\${(.+?)\.(.+?)(\..+)?}$', value)
         if not match:
             return None
         
-        dependee_name = match.group(1)
-        tmp = dependee_name.split('.')
-        dependee_type = tmp[0]
-        dependee_resource = tmp[1]
+        dependee_type = match[1]
+        dependee_resource = match[2]
 
         return Dependency(
             f'{dependee_type}.{dependee_resource}',
-            f'{resource.type}.{resource.name}',
+            f'{origin.type}.{origin.name}',
             explicit,
             Range(
                 metadata['__start_line__'],
