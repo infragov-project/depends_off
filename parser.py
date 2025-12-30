@@ -2,8 +2,7 @@ from pathlib import Path
 import re
 import hcl2
 from typing import Any
-
-from resources import Resource, Dependency, Range
+from terraform_graph import Node, Provider, Resource, Dependency, Range
 
 class Parser:
     @staticmethod
@@ -11,7 +10,7 @@ class Parser:
         """
         Parse a Terraform module and extract resources and dependencies.
         """
-        resources: list[Resource] = list()
+        nodes: list[Node] = list()
         dependencies: list[Dependency] = list()
 
         # Terraform modules include only the .tf files in the directory, without
@@ -21,10 +20,10 @@ class Parser:
             if not path.name.endswith('.tf'): continue
             
             file_resources, file_dependencies = Parser.parse_file(str(path))
-            resources.extend(file_resources)
+            nodes.extend(file_resources)
             dependencies.extend(file_dependencies)
 
-        return resources, dependencies
+        return nodes, dependencies
 
     @staticmethod
     def parse_file(filename: str):
@@ -34,27 +33,47 @@ class Parser:
         with open(filename, 'r') as f:
             content: Any = hcl2.load(f, with_meta=True) # type: ignore
         
-        resources: list[Resource] = list()
+        nodes: list[Node] = list()
         dependencies: list[Dependency] = list()
 
-        if 'resource' in content:
-            for data in content['resource']: Parser._resource(data, resources, dependencies)
+        if 'provider' in content:
+            for data in content['provider']: Parser._provider(data, nodes)
 
-        return resources, dependencies
+        if 'resource' in content:
+            for data in content['resource']: Parser._resource(data, nodes, dependencies)
+
+        return nodes, dependencies
     
     @staticmethod
-    def _resource(data: Any, resources: list[Resource], dependencies: list[Dependency]):
-        resource, content = Parser._extract(data, 'type', 'name')
+    def _provider(data: Any, nodes: list[Node]):
+        provider, data = Parser._extract(data, 'name')
+
+        if 'alias' in data:
+            alias = data['alias']['value']
+        else :
+            alias = None
+
+        provider = Provider(provider['name'], alias, Range(
+            data['__start_line__'],
+            data['__start_column__'],
+            data['__end_line__'],
+            data['__end_column__']
+        ))
+        nodes.append(provider)
+    
+    @staticmethod
+    def _resource(data: Any, nodes: list[Node], dependencies: list[Dependency]):
+        resource, data = Parser._extract(data, 'type', 'name')
 
         resource = Resource(resource['type'], resource['name'], Range(
-            content['__start_line__'],
-            content['__start_column__'],
-            content['__end_line__'],
-            content['__end_column__']
+            data['__start_line__'],
+            data['__start_column__'],
+            data['__end_line__'],
+            data['__end_column__']
         ))
-        resources.append(resource)
+        nodes.append(resource)
 
-        for attribute, metadata in content.items():
+        for attribute, metadata in data.items():
             # Ignore line/column metadata
             if attribute.startswith('__'):
                 continue
@@ -63,24 +82,67 @@ class Parser:
 
             if type(value) == list:
                 for v in value: # type: ignore
-                    dependency = Parser._resource_dependency(v, resource, metadata, attribute == 'depends_on') # type: ignore
+                    dependency = Parser._dependency(v, resource, metadata, attribute == 'depends_on') # type: ignore
                     if dependency: dependencies.append(dependency)
             else:
-                dependency = Parser._resource_dependency(value, resource, metadata, attribute == 'depends_on')
+                dependency = Parser._dependency(value, resource, metadata, attribute == 'depends_on')
                 if dependency: dependencies.append(dependency)
+
+    @staticmethod
+    def _dependency(value: str, origin: Node, metadata: Any, explicit: bool):
+        dependency = Parser._provider_dependency(value, origin, metadata, explicit)
+        if dependency:
+            return dependency
+        
+        dependency = Parser._resource_dependency(value, origin, metadata, explicit)
+        if dependency:
+            return dependency
+        
+        return None
+
+    @staticmethod
+    def _provider_dependency(value: str, origin: Node, metadata: Any, explicit: bool):
+        match = re.match(r'^\${(.+?)\.(.+?)(\..+)?}$', value)
+        if not match:
+            return None
+        
+        provider = match[1]
+        alias = match[2]
+        provider_name = f'{provider}.{alias}'
+
+        dependee = Provider.get_by_name(provider_name)
+
+        if not dependee: return None
+
+        return Dependency(
+            origin.id,
+            dependee.id,
+            explicit,
+            Range(
+                metadata['__start_line__'],
+                metadata['__start_column__'],
+                metadata['__end_line__'],
+                metadata['__end_column__']
+            )
+        )
     
     @staticmethod
-    def _resource_dependency(value: str, origin: Resource, metadata: Any, explicit: bool):
+    def _resource_dependency(value: str, origin: Node, metadata: Any, explicit: bool):
         match = re.match(r'^\${(.+?)\.(.+?)(\..+)?}$', value)
         if not match:
             return None
         
         dependee_type = match[1]
         dependee_resource = match[2]
+        dependee_name = f'{dependee_type}.{dependee_resource}'
+
+        dependee = Resource.get_by_name(dependee_name)
+
+        if not dependee: return None
 
         return Dependency(
-            f'{dependee_type}.{dependee_resource}',
-            f'{origin.type}.{origin.name}',
+            origin.id,
+            dependee.id,
             explicit,
             Range(
                 metadata['__start_line__'],
