@@ -44,6 +44,21 @@ class Provider(Node):
 
     def __str__(self):
         return f'{self.name} ({self.range})'
+    
+class Variable(Node):
+    _name_registry: dict[str, Variable] = dict()
+
+    def __init__(self, name: str, range: Range):
+        super().__init__(range)
+        self.name = name
+        Variable._name_registry[self.name] = self
+
+    @staticmethod
+    def get_by_name(name: str):
+        return Variable._name_registry.get(name)
+    
+    def __str__(self):
+        return f'var.{self.name} ({self.range})'
 
 class Resource(Node):
     _name_registry: dict[str, Resource] = dict()

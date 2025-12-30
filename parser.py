@@ -2,7 +2,7 @@ from pathlib import Path
 import re
 import hcl2
 from typing import Any
-from terraform_graph import Node, Provider, Resource, Dependency, Range
+from terraform_graph import Node, Provider, Variable, Resource, Dependency, Range
 
 class Parser:
     @staticmethod
@@ -39,6 +39,9 @@ class Parser:
         if 'provider' in content:
             for data in content['provider']: Parser._provider(data, nodes)
 
+        if 'variable' in content:
+            for data in content['variable']: Parser._variable(data, nodes)
+
         if 'resource' in content:
             for data in content['resource']: Parser._resource(data, nodes, dependencies)
 
@@ -60,6 +63,18 @@ class Parser:
             data['__end_column__']
         ))
         nodes.append(provider)
+
+    @staticmethod
+    def _variable(data: Any, nodes: list[Node]):
+        variable, data = Parser._extract(data, 'name')
+
+        variable = Variable(variable['name'], Range(
+            data['__start_line__'],
+            data['__start_column__'],
+            data['__end_line__'],
+            data['__end_column__']
+        ))
+        nodes.append(variable)
     
     @staticmethod
     def _resource(data: Any, nodes: list[Node], dependencies: list[Dependency]):
@@ -90,6 +105,10 @@ class Parser:
 
     @staticmethod
     def _dependency(value: str, origin: Node, metadata: Any, explicit: bool):
+        dependency = Parser._variable_dependency(value, origin, metadata, explicit)
+        if dependency:
+            return dependency
+
         dependency = Parser._provider_dependency(value, origin, metadata, explicit)
         if dependency:
             return dependency
@@ -111,6 +130,30 @@ class Parser:
         provider_name = f'{provider}.{alias}'
 
         dependee = Provider.get_by_name(provider_name)
+
+        if not dependee: return None
+
+        return Dependency(
+            origin.id,
+            dependee.id,
+            explicit,
+            Range(
+                metadata['__start_line__'],
+                metadata['__start_column__'],
+                metadata['__end_line__'],
+                metadata['__end_column__']
+            )
+        )
+    
+    @staticmethod
+    def _variable_dependency(value: str, origin: Node, metadata: Any, explicit: bool):
+        match = re.match(r'^\${var\.(.+?)(\..+)?}$', value)
+        if not match:
+            return None
+        
+        variable_name = match[1]
+
+        dependee = Variable.get_by_name(variable_name)
 
         if not dependee: return None
 
