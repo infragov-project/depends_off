@@ -110,7 +110,7 @@ class Parser:
             for attribute, metadata in data.items():
                 # Ignore line/column metadata
                 if attribute.startswith('__'): continue
-                Parser._dependencies(metadata, origin, dependencies, attribute == 'depends_on', data)
+                Parser._dependencies(metadata, origin, dependencies, explicit or attribute == 'depends_on', data)
 
 
     @staticmethod
@@ -126,7 +126,7 @@ class Parser:
         dependency = Parser._resource_dependency(value, origin, metadata, explicit)
         if dependency:
             return dependency
-        
+
         return None
 
     @staticmethod
