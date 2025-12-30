@@ -107,76 +107,67 @@ class Parser:
         self._resource_dependency(value, origin, metadata, explicit)
 
     def _provider_dependency(self, value: str, origin: Node, metadata: Any, explicit: bool):
-        match = re.match(r'^\${(.+?)\.(.+?)(\..+)?}$', value)
-        if not match:
-            return None
-        
-        provider = match[1]
-        alias = match[2]
-        provider_name = f'{provider}.{alias}'
+        for match in re.finditer(r'\${(.+?)\.(.+?)(\..+)?}', value):            
+            provider = match[1]
+            alias = match[2]
+            provider_name = f'{provider}.{alias}'
 
-        dependee = Provider.get_by_name(provider_name)
+            dependee = Provider.get_by_name(provider_name)
 
-        if not dependee: return None
+            if not dependee: continue
 
-        self.dependencies.append(Dependency(
-            origin.id,
-            dependee.id,
-            explicit,
-            Range(
-                metadata['__start_line__'],
-                metadata['__start_column__'],
-                metadata['__end_line__'],
-                metadata['__end_column__']
-            )
-        ))
+            self.dependencies.append(Dependency(
+                origin.id,
+                dependee.id,
+                explicit,
+                Range(
+                    metadata['__start_line__'],
+                    metadata['__start_column__'],
+                    metadata['__end_line__'],
+                    metadata['__end_column__']
+                )
+            ))
     
     def _variable_dependency(self, value: str, origin: Node, metadata: Any, explicit: bool):
-        match = re.match(r'^\${var\.(.+?)(\..+)?}$', value)
-        if not match:
-            return None
-        
-        variable_name = match[1]
-        dependee = Variable.get_by_name(variable_name)
+        for match in re.finditer(r'\${var\.(.+?)(\..+)?}', value):
+            variable_name = match[1]
+            dependee = Variable.get_by_name(variable_name)
 
-        if not dependee: return None
+            if not dependee: continue
 
-        self.dependencies.append(Dependency(
-            origin.id,
-            dependee.id,
-            explicit,
-            Range(
-                metadata['__start_line__'],
-                metadata['__start_column__'],
-                metadata['__end_line__'],
-                metadata['__end_column__']
-            )
-        ))
+            self.dependencies.append(Dependency(
+                origin.id,
+                dependee.id,
+                explicit,
+                Range(
+                    metadata['__start_line__'],
+                    metadata['__start_column__'],
+                    metadata['__end_line__'],
+                    metadata['__end_column__']
+                )
+            ))
     
     def _resource_dependency(self, value: str, origin: Node, metadata: Any, explicit: bool):
-        match = re.match(r'^\${(.+?)\.(.+?)(\..+)?}$', value)
-        if not match:
-            return None
-        
-        dependee_type = match[1]
-        dependee_resource = match[2]
-        dependee_name = f'{dependee_type}.{dependee_resource}'
+        for match in re.finditer(r'\${(.+?)\.(.+?)(\..+)?}', value):            
+            dependee_type = match[1]
+            dependee_resource = match[2]
+            dependee_name = f'{dependee_type}.{dependee_resource}'
 
-        dependee = Resource.get_by_name(dependee_name)
+            dependee = Resource.get_by_name(dependee_name)
 
-        if not dependee: return None
+            if not dependee: continue
 
-        self.dependencies.append(Dependency(
-            origin.id,
-            dependee.id,
-            explicit,
-            Range(
-                metadata['__start_line__'],
-                metadata['__start_column__'],
-                metadata['__end_line__'],
-                metadata['__end_column__']
-            )
-        ))
+            self.dependencies.append(Dependency(
+                origin.id,
+                dependee.id,
+                explicit,
+                Range(
+                    metadata['__start_line__'],
+                    metadata['__start_column__'],
+                    metadata['__end_line__'],
+                    metadata['__end_column__']
+                )
+            ))
     
     def _extract(self, data: dict[Any, Any], *arguments: str):
         result: dict[str, Any] = dict()
