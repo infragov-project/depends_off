@@ -76,7 +76,30 @@ class Resource(Node):
 
     def __str__(self):
         return f'{self.type}.{self.name} ({self.range})'
+    
+class ModuleNode(Node):
+    def __init__(self, name: str, start: bool):
+        super().__init__(Range(0, 0, 0, 0))
+        self.name = name
+        self.start = start
+    
+    def __str__(self):
+        return f'module.{self.name} ({"start" if self.start else "end"})'
 
+    
+class Module():
+    def __init__(self, name: str, path: str):
+        # Nodes that represent the start and end of the module in the dependency graph
+        self.start = ModuleNode(name, True)
+        self.end = ModuleNode(name, False)
+
+        self.name = name
+        self.path = path
+
+        self.nodes: list[Node] = []
+        self.variables: list[Variable] = []
+        self.dependencies : list[Dependency] = []
+        
 class Dependency:
     def __init__(self, dependee_id: int, depended_id: int, explicit: bool, range: Range):
         self.dependee_id = dependee_id

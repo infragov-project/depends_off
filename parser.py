@@ -2,14 +2,32 @@ from pathlib import Path
 import re
 import hcl2
 from typing import Any
-from terraform_graph import Node, Provider, Variable, Resource, Dependency, Range
+from terraform_graph import Node, Provider, Variable, Resource, Dependency, Range, Module
 
 class Parser:
-    def parse(self, module_path: str):
+    def parse(self, path: str):
+        """
+        Parse a Terraform module located at the given path and the modules it
+        depends on.
+        """
+
+        # A list of modules yet to be parsed
+        self.modules_to_parse = [('root', path)]
+        
+        modules: list[Module] = []
+        while self.modules_to_parse:
+            name, path = self.modules_to_parse.pop()
+            modules.append(self._parse_module(name, path))
+
+        return modules
+
+    def _parse_module(self, name: str, path: str):
         """
         Parse a Terraform module and extract resources and dependencies.
         """
-        self.nodes: list[Node] = list()
+        
+        module = Module(name, path)
+
         # A list of dependencies to consider in the second pass. Contains tuples
         # of the form (dependent, is explicit, dependency declaration range,
         # dependency string)
@@ -17,42 +35,48 @@ class Parser:
 
         # Terraform modules include only the .tf files in the directory, without
         # recursing into subdirectories
-        for path in Path(module_path).iterdir():
-            if path.is_dir(): continue
-            if not path.name.endswith('.tf'): continue
+        for p in Path(path).iterdir():
+            if p.is_dir(): continue
+            if not p.name.endswith('.tf'): continue
             
-            self.parse_file(str(path))
-
-        dependencies: list[Dependency] = list()
+            self._parse_file(module, str(p))
 
         for (dependent, explicit, range, string) in self.potential_dependencies:
             dependee = self._find_node(string)
             if dependee:
-                dependencies.append(Dependency(
+                module.dependencies.append(Dependency(
                     dependent.id,
                     dependee.id,
                     explicit,
                     range
                 ))
 
-        return self.nodes, dependencies
+        for node in module.nodes:
+            module.dependencies.append(Dependency(node.id, module.start.id, False, module.start.range))
+            
+        for node in module.nodes:
+            module.dependencies.append(Dependency(module.end.id, node.id, False, module.end.range))
 
-    def parse_file(self, filename: str):
+        return module
+
+
+    def _parse_file(self, module: Module, filename: str):
         """
         Parse a Terraform file and extract resources and dependencies.
         """
         with open(filename, 'r') as f:
             content: Any = hcl2.load(f, with_meta=True) # type: ignore
+
         if 'variable' in content:
-            for data in content['variable']: self._variable(data)
+            for data in content['variable']: self._variable(module, data)
 
         if 'provider' in content:
-            for data in content['provider']: self._provider(data)
+            for data in content['provider']: self._provider(module, data)
 
         if 'resource' in content:
-            for data in content['resource']: self._resource(data)
+            for data in content['resource']: self._resource(module, data)
     
-    def _provider(self, data: Any):
+    def _provider(self, module: Module, data: Any):
         provider, data = self._extract(data, 'name')
 
         if 'alias' in data:
@@ -66,11 +90,11 @@ class Parser:
             data['__end_line__'],
             data['__end_column__']
         ))
-        self.nodes.append(provider)
+        module.nodes.append(provider)
 
         self._dependencies(data, provider)
 
-    def _variable(self, data: Any):
+    def _variable(self, module: Module, data: Any):
         variable, data = self._extract(data, 'name')
 
         variable = Variable(variable['name'], Range(
@@ -79,9 +103,10 @@ class Parser:
             data['__end_line__'],
             data['__end_column__']
         ))
-        self.nodes.append(variable)
+        module.nodes.append(variable)
+        module.variables.append(variable)
     
-    def _resource(self, data: Any):
+    def _resource(self, module: Module, data: Any):
         resource, data = self._extract(data, 'type', 'name')
 
         resource = Resource(resource['type'], resource['name'], Range(
@@ -90,7 +115,7 @@ class Parser:
             data['__end_line__'],
             data['__end_column__']
         ))
-        self.nodes.append(resource)
+        module.nodes.append(resource)
 
         self._dependencies(data, resource)
 
