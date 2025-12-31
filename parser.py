@@ -5,16 +5,15 @@ from typing import Any
 from terraform_graph import Node, Provider, Variable, Resource, Dependency, Range
 
 class Parser:
-    def __init__(self):
-        self.nodes: list[Node] = list()
-        self.dependencies: list[Dependency] = list()
-
     def parse(self, module_path: str):
         """
         Parse a Terraform module and extract resources and dependencies.
         """
         self.nodes: list[Node] = list()
-        self.dependencies: list[Dependency] = list()
+        # A list of dependencies to consider in the second pass. Contains tuples
+        # of the form (dependent, is explicit, dependency declaration range,
+        # dependency string)
+        self.potential_dependencies: list[tuple[Node, bool, Range, str]] = list()
 
         # Terraform modules include only the .tf files in the directory, without
         # recursing into subdirectories
@@ -24,7 +23,19 @@ class Parser:
             
             self.parse_file(str(path))
 
-        return self.nodes, self.dependencies
+        dependencies: list[Dependency] = list()
+
+        for (dependent, explicit, range, string) in self.potential_dependencies:
+            dependee = self._find_node(string)
+            if dependee:
+                dependencies.append(Dependency(
+                    dependent.id,
+                    dependee.id,
+                    explicit,
+                    range
+                ))
+
+        return self.nodes, dependencies
 
     def parse_file(self, filename: str):
         """
@@ -89,7 +100,14 @@ class Parser:
             pass
 
         elif type(data) == str:
-            self._dependency(data, origin, metadata, explicit)
+            range = Range(
+                metadata['__start_line__'],
+                metadata['__start_column__'],
+                metadata['__end_line__'],
+                metadata['__end_column__']
+            )
+            for match in re.finditer(r'\${(.+?)}', data):   
+                self.potential_dependencies.append((origin, explicit, range, match[1]))
 
         elif type(data) == list:
             for value in data: # type: ignore
@@ -101,73 +119,30 @@ class Parser:
                 if attribute.startswith('__'): continue
                 self._dependencies(metadata, origin, explicit or attribute == 'depends_on', data)
 
-    def _dependency(self, value: str, origin: Node, metadata: Any, explicit: bool):
-        self._variable_dependency(value, origin, metadata, explicit)
-        self._provider_dependency(value, origin, metadata, explicit)
-        self._resource_dependency(value, origin, metadata, explicit)
-
-    def _provider_dependency(self, value: str, origin: Node, metadata: Any, explicit: bool):
-        for match in re.finditer(r'\${(.+?)\.(.+?)(\..+)?}', value):            
-            provider = match[1]
-            alias = match[2]
-            provider_name = f'{provider}.{alias}'
-
-            dependee = Provider.get_by_name(provider_name)
-
-            if not dependee: continue
-
-            self.dependencies.append(Dependency(
-                origin.id,
-                dependee.id,
-                explicit,
-                Range(
-                    metadata['__start_line__'],
-                    metadata['__start_column__'],
-                    metadata['__end_line__'],
-                    metadata['__end_column__']
-                )
-            ))
+    def _find_node(self, string: str) -> Node | None:
+        return self._find_var(string) or self._find_provider(string) or self._find_resource(string)
     
-    def _variable_dependency(self, value: str, origin: Node, metadata: Any, explicit: bool):
-        for match in re.finditer(r'\${var\.(.+?)(\..+)?}', value):
-            variable_name = match[1]
-            dependee = Variable.get_by_name(variable_name)
+    def _find_provider(self, string: str) -> Node | None:
+        match = re.match(r'(.+?)\.(.+?)(\..+)?$', string)
+        if not match: return None
 
-            if not dependee: continue
-
-            self.dependencies.append(Dependency(
-                origin.id,
-                dependee.id,
-                explicit,
-                Range(
-                    metadata['__start_line__'],
-                    metadata['__start_column__'],
-                    metadata['__end_line__'],
-                    metadata['__end_column__']
-                )
-            ))
+        provider = match[1]
+        alias = match[2]
+        return Provider.get_by_name(f'{provider}.{alias}')
     
-    def _resource_dependency(self, value: str, origin: Node, metadata: Any, explicit: bool):
-        for match in re.finditer(r'\${(.+?)\.(.+?)(\..+)?}', value):            
-            dependee_type = match[1]
-            dependee_resource = match[2]
-            dependee_name = f'{dependee_type}.{dependee_resource}'
+    def _find_var(self, string: str) -> Node | None:
+        if string[:4] != "var.": return None
+        
+        name = string.split('.')[1]
+        return Variable.get_by_name(name)
+    
+    def _find_resource(self, string: str) -> Node | None:
+        match = re.match(r'(.+?)\.(.+?)(\..+)?$', string)
+        if not match: return None
 
-            dependee = Resource.get_by_name(dependee_name)
-
-            if not dependee: continue
-
-            self.dependencies.append(Dependency(
-                origin.id,
-                dependee.id,
-                explicit,
-                Range(
-                    metadata['__start_line__'],
-                    metadata['__start_column__'],
-                    metadata['__end_line__'],
-                    metadata['__end_column__']
-                )
-            ))
+        type = match[1]
+        name = match[2]
+        return Resource.get_by_name(f'{type}.{name}')
     
     def _extract(self, data: dict[Any, Any], *arguments: str):
         result: dict[str, Any] = dict()
