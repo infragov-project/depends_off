@@ -114,7 +114,6 @@ class Module():
         self.nodes: list[Node] = []
         self.variables: list[Variable] = []
         self.outputs: list[Output] = []
-        self.dependencies: list[Dependency] = []
         self.submodules: list[Module] = []
         
 class Dependency:

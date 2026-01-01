@@ -7,24 +7,40 @@ from terraform_graph import Node, Provider, Variable, Output, Resource, Dependen
 class Parser:
     def parse(self, path: str):
         """
-        Parse a Terraform module located at the given path and the modules it
+        Parse the dependency graph of a Terraform module and the modules it
         depends on.
         """
 
-        module = self._parse_module('root', path)
-        return module
-
-    def _parse_module(self, name: str, path: str):
-        """
-        Parse a Terraform module and extract resources and dependencies.
-        """
-        
-        module = Module(name, path)
+        self.nodes: list[Node] = list()
+        self.dependencies: list[Dependency] = list()
 
         # A list of dependencies to consider in the second pass. Contains tuples
         # of the form (dependent, is explicit, dependency declaration range,
         # dependency string)
         self.potential_dependencies: list[tuple[Node, bool, Range, str]] = list()
+
+        module = self._parse_module('root', path)
+
+
+        for (dependent, explicit, range, string) in self.potential_dependencies:
+            dependee = self._find_node(module, string)
+            if dependee:
+                self.dependencies.append(Dependency(
+                    dependent.id,
+                    dependee.id,
+                    explicit,
+                    range
+                ))
+
+        return self.nodes, self.dependencies
+
+    def _parse_module(self, name: str, path: str):
+        """
+        Parse the nodes in the dependency graph of a Terraform module and the
+        modules it depends on.
+        """
+        
+        module = Module(name, path)
 
         # Terraform modules include only the .tf files in the directory, without
         # recursing into subdirectories
@@ -34,21 +50,14 @@ class Parser:
             
             self._parse_file(module, str(p))
 
-        for (dependent, explicit, range, string) in self.potential_dependencies:
-            dependee = self._find_node(module, string)
-            if dependee:
-                module.dependencies.append(Dependency(
-                    dependent.id,
-                    dependee.id,
-                    explicit,
-                    range
-                ))
+        self.nodes.append(module.start)
+        self.nodes.append(module.end)
 
         for node in module.nodes:
-            module.dependencies.append(Dependency(node.id, module.start.id, False, module.start.range))
+            self.dependencies.append(Dependency(node.id, module.start.id, False, module.start.range))
             
         for node in module.nodes:
-            module.dependencies.append(Dependency(module.end.id, node.id, False, module.end.range))
+            self.dependencies.append(Dependency(module.end.id, node.id, False, module.end.range))
 
         return module
 
@@ -82,8 +91,10 @@ class Parser:
 
         path = module.path + '/' + source
         submodule = self._parse_module(name['name'], path)
-        module.nodes.extend(submodule.nodes)
-        module.submodules.append(submodule)   
+        module.submodules.append(submodule)
+        
+        self.dependencies.append(Dependency(module.end.id, submodule.end.id, False, module.end.range))
+        self.dependencies.append(Dependency(submodule.start.id, module.start.id, False, module.start.range))
 
         self._dependencies(data, submodule.start)
     
@@ -102,6 +113,7 @@ class Parser:
             data['__end_column__']
         ))
         module.nodes.append(provider)
+        self.nodes.append(provider)
 
         self._dependencies(data, provider)
 
@@ -115,6 +127,8 @@ class Parser:
             data['__end_column__']
         ))
         module.nodes.append(variable)
+        module.variables.append(variable)
+        self.nodes.append(variable)
         
         module.variables.append(variable)
 
@@ -129,6 +143,7 @@ class Parser:
         ))
         module.nodes.append(output)
         module.outputs.append(output)
+        self.nodes.append(output)
 
         self._dependencies(data, output)
     
@@ -142,6 +157,7 @@ class Parser:
             data['__end_column__']
         ))
         module.nodes.append(resource)
+        self.nodes.append(resource)
 
         self._dependencies(data, resource)
 
