@@ -113,7 +113,9 @@ class Module():
 
         self.nodes: list[Node] = []
         self.variables: list[Variable] = []
-        self.dependencies : list[Dependency] = []
+        self.outputs: list[Output] = []
+        self.dependencies: list[Dependency] = []
+        self.submodules: list[Module] = []
         
 class Dependency:
     def __init__(self, dependee_id: int, depended_id: int, explicit: bool, range: Range):

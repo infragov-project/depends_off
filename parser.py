@@ -11,15 +11,8 @@ class Parser:
         depends on.
         """
 
-        # A list of modules yet to be parsed
-        self.modules_to_parse = [('root', path)]
-        
-        modules: list[Module] = []
-        while self.modules_to_parse:
-            name, path = self.modules_to_parse.pop()
-            modules.append(self._parse_module(name, path))
-
-        return modules
+        module = self._parse_module('root', path)
+        return module
 
     def _parse_module(self, name: str, path: str):
         """
@@ -42,7 +35,7 @@ class Parser:
             self._parse_file(module, str(p))
 
         for (dependent, explicit, range, string) in self.potential_dependencies:
-            dependee = self._find_node(string)
+            dependee = self._find_node(module, string)
             if dependee:
                 module.dependencies.append(Dependency(
                     dependent.id,
@@ -64,8 +57,12 @@ class Parser:
         """
         Parse a Terraform file and extract resources and dependencies.
         """
+
         with open(filename, 'r') as f:
             content: Any = hcl2.load(f, with_meta=True) # type: ignore
+
+        if 'module' in content:
+            for data in content['module']: self._module_block(module, data)
 
         if 'variable' in content:
             for data in content['variable']: self._variable(module, data)
@@ -78,6 +75,17 @@ class Parser:
 
         if 'resource' in content:
             for data in content['resource']: self._resource(module, data)
+
+    def _module_block(self, module: Module, data: Any):
+        name, data = self._extract(data, 'name')
+        source = data['source']['value']
+
+        path = module.path + '/' + source
+        submodule = self._parse_module(name['name'], path)
+        module.nodes.extend(submodule.nodes)
+        module.submodules.append(submodule)   
+
+        self._dependencies(data, submodule.start)
     
     def _provider(self, module: Module, data: Any):
         provider, data = self._extract(data, 'name')
@@ -120,6 +128,7 @@ class Parser:
             data['__end_column__']
         ))
         module.nodes.append(output)
+        module.outputs.append(output)
 
         self._dependencies(data, output)
     
@@ -161,8 +170,8 @@ class Parser:
                 if attribute.startswith('__'): continue
                 self._dependencies(metadata, origin, explicit or attribute == 'depends_on', data)
 
-    def _find_node(self, string: str) -> Node | None:
-        return self._find_var(string) or self._find_provider(string) or self._find_resource(string)
+    def _find_node(self, module: Module, string: str) -> Node | None:
+        return self._find_var(string) or self._find_module_var(module, string) or self._find_provider(string) or self._find_resource(string)
     
     def _find_provider(self, string: str) -> Node | None:
         match = re.match(r'(.+?)\.(.+?)(\..+)?$', string)
@@ -177,6 +186,20 @@ class Parser:
         
         name = string.split('.')[1]
         return Variable.get_by_name(name)
+    
+    def _find_module_var(self, module: Module, string: str) -> Node | None:
+        match = re.match(r'module\.(.+?)\.(.+?)(\..+)?$', string)
+        if not match: return None
+
+        module_name = match[1]
+        var_name = match[2]
+
+        m = next((m for m in module.submodules if m.name == module_name), None)
+        if m is None: return None
+        
+        v = next((v for v in m.outputs if v.name == var_name), None)
+
+        return v
     
     def _find_resource(self, string: str) -> Node | None:
         match = re.match(r'(.+?)\.(.+?)(\..+)?$', string)
