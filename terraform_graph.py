@@ -59,6 +59,21 @@ class Variable(Node):
     
     def __str__(self):
         return f'var.{self.name} ({self.range})'
+    
+class Output(Node):
+    _name_registry: dict[str, Output] = dict()
+
+    def __init__(self, name: str, range: Range):
+        super().__init__(range)
+        self.name = name
+        Output._name_registry[self.name] = self
+
+    @staticmethod
+    def get_by_name(name: str):
+        return Output._name_registry.get(name)
+    
+    def __str__(self):
+        return f'output.{self.name} ({self.range})'
 
 class Resource(Node):
     _name_registry: dict[str, Resource] = dict()

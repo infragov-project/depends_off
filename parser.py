@@ -2,7 +2,7 @@ from pathlib import Path
 import re
 import hcl2
 from typing import Any
-from terraform_graph import Node, Provider, Variable, Resource, Dependency, Range, Module
+from terraform_graph import Node, Provider, Variable, Output, Resource, Dependency, Range, Module
 
 class Parser:
     def parse(self, path: str):
@@ -70,6 +70,9 @@ class Parser:
         if 'variable' in content:
             for data in content['variable']: self._variable(module, data)
 
+        if 'output' in content:
+            for data in content['output']: self._output(module, data)
+
         if 'provider' in content:
             for data in content['provider']: self._provider(module, data)
 
@@ -104,7 +107,21 @@ class Parser:
             data['__end_column__']
         ))
         module.nodes.append(variable)
+        
         module.variables.append(variable)
+
+    def _output(self, module: Module, data: Any):
+        output, data = self._extract(data, 'name')
+
+        output = Output(output['name'], Range(
+            data['__start_line__'],
+            data['__start_column__'],
+            data['__end_line__'],
+            data['__end_column__']
+        ))
+        module.nodes.append(output)
+
+        self._dependencies(data, output)
     
     def _resource(self, module: Module, data: Any):
         resource, data = self._extract(data, 'type', 'name')
