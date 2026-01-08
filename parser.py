@@ -92,6 +92,9 @@ class Parser:
         """
         for dependent, explicit, range, string in self.potential_dependencies:
             dependee = self._find_node(module, string)
+            
+            # Ignore self-references
+            if dependee == dependent: continue
 
             if dependee: self.dependencies.append(Dependency(
                 dependent,

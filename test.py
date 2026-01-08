@@ -7,6 +7,8 @@ parsed = 0
 analyzed = 0
 redundant_count = 0
 
+parser = Parser()
+
 for path in Path('terrads-light').rglob('*'):
     if path.is_file(): continue
     if not path.is_dir(): continue
@@ -17,7 +19,7 @@ for path in Path('terrads-light').rglob('*'):
     count += 1
 
     try:
-        resources, dependencies = Parser.parse(str(path))
+        resources, dependencies = parser.parse(str(path))
         print(f'Parsed {str(path)}')
         parsed += 1
 
@@ -27,6 +29,9 @@ for path in Path('terrads-light').rglob('*'):
             print(f'Analyzed {str(path)}: {len(redundant)} redundant dependencies')
             analyzed += 1
             redundant_count += len(redundant)
+
+            if len(redundant) > 0:
+                print('Redundant dependency found!', str(path))
         except Exception as e:
             print(f'Failed to analyze {str(path)}')
     except Exception as e:
