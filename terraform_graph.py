@@ -5,14 +5,15 @@ class Range:
     Represents a range in a source file.
     """
 
-    def __init__(self, start_line: int, start_column: int, end_line: int, end_column: int):
+    def __init__(self, filename: str, start_line: int, start_column: int, end_line: int, end_column: int):
+        self.filename = filename
         self.start_line = start_line
         self.start_column = start_column
         self.end_line = end_line
         self.end_column = end_column
 
     def __str__(self):
-        return f'{self.start_line}:{self.start_column}-{self.end_line}:{self.end_column}'
+        return f'{self.filename} ({self.start_line}:{self.start_column}-{self.end_line}:{self.end_column})'
     
 class Node:
     """
@@ -90,4 +91,6 @@ class Dependency:
         self.explicit = explicit
     
     def __str__(self):
+        if self.range:
+            return f'{self.dependee} -> {self.depended} {'(explicit)' if self.explicit else ''} at {self.range}'
         return f'{self.dependee} -> {self.depended} {'(explicit)' if self.explicit else ''}'

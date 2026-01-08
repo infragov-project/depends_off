@@ -72,19 +72,19 @@ class Parser:
             content: Any = hcl2.load(f, with_meta=True) # type: ignore
 
         if 'module' in content:
-            for data in content['module']: self._module_block(module, data)
+            for data in content['module']: self._module_block(module, filename, data)
 
         if 'variable' in content:
-            for data in content['variable']: self._variable(module, data)
+            for data in content['variable']: self._variable(module, filename, data)
 
         if 'output' in content:
-            for data in content['output']: self._output(module, data)
+            for data in content['output']: self._output(module, filename, data)
 
         if 'provider' in content:
-            for data in content['provider']: self._provider(module, data)
+            for data in content['provider']: self._provider(module, filename, data)
 
         if 'resource' in content:
-            for data in content['resource']: self._resource(module, data)
+            for data in content['resource']: self._resource(module, filename, data)
     
     def _parse_dependencies(self, module: Module):
         """
@@ -100,7 +100,7 @@ class Parser:
                 range
             ))
 
-    def _module_block(self, module: Module, data: Any):
+    def _module_block(self, module: Module, filename: str, data: Any):
         """
         Parse a module block in a Terraform file.
         """
@@ -114,9 +114,9 @@ class Parser:
         self.dependencies.append(Dependency(module.close, submodule.close))
         self.dependencies.append(Dependency(submodule.expand, module.expand))
 
-        self._dependencies(data, submodule.expand)
+        self._dependencies(filename, data, submodule.expand)
     
-    def _provider(self, module: Module, data: Any):
+    def _provider(self, module: Module, filename: str, data: Any):
         """
         Parse a provider block in a Terraform file.
         """
@@ -128,6 +128,7 @@ class Parser:
             alias = None
 
         provider = Provider(provider['name'], alias, Range(
+            filename,
             data['__start_line__'],
             data['__start_column__'],
             data['__end_line__'],
@@ -137,15 +138,16 @@ class Parser:
         self.nodes.append(provider)
         self.node_map[f'provider.{provider.name}'] = provider
 
-        self._dependencies(data, provider)
+        self._dependencies(filename, data, provider)
 
-    def _variable(self, module: Module, data: Any):
+    def _variable(self, module: Module, filename: str, data: Any):
         """
         Parse a variable block in a Terraform file.
         """
         variable, data = self._extract(data, 'name')
 
         variable = Variable(variable['name'], Range(
+            filename,
             data['__start_line__'],
             data['__start_column__'],
             data['__end_line__'],
@@ -158,13 +160,14 @@ class Parser:
         
         module.variables.append(variable)
 
-    def _output(self, module: Module, data: Any):
+    def _output(self, module: Module, filename: str, data: Any):
         """
         Parse an output block in a Terraform file.
         """
         output, data = self._extract(data, 'name')
 
         output = Output(output['name'], Range(
+            filename,
             data['__start_line__'],
             data['__start_column__'],
             data['__end_line__'],
@@ -175,15 +178,16 @@ class Parser:
         self.nodes.append(output)
         self.node_map[f'output.{output.name}'] = output
 
-        self._dependencies(data, output)
+        self._dependencies(filename, data, output)
     
-    def _resource(self, module: Module, data: Any):
+    def _resource(self, module: Module, filename: str, data: Any):
         """
         Parse a resource block in a Terraform file.
         """
         resource, data = self._extract(data, 'type', 'name')
 
         resource = Resource(resource['type'], resource['name'], Range(
+            filename,
             data['__start_line__'],
             data['__start_column__'],
             data['__end_line__'],
@@ -193,9 +197,9 @@ class Parser:
         self.nodes.append(resource)
         self.node_map[f'resource.{resource.name}'] = resource
 
-        self._dependencies(data, resource)
+        self._dependencies(filename, data, resource)
 
-    def _dependencies(self, data: Any, origin: Node, explicit: bool = False, metadata: Any = {}):
+    def _dependencies(self, filename: str, data: Any, origin: Node, explicit: bool = False, metadata: Any = {}):
         """
         Recursively parse potential dependencies in a Terraform block's data.
         """
@@ -207,6 +211,7 @@ class Parser:
         # Strings can contain dependencies
         elif type(data) == str:
             range = Range(
+                filename,
                 metadata['__start_line__'],
                 metadata['__start_column__'],
                 metadata['__end_line__'],
@@ -222,14 +227,14 @@ class Parser:
         # Recursively parse lists
         elif type(data) == list:
             for value in data: # type: ignore
-                self._dependencies(value, origin, explicit, metadata)
+                self._dependencies(filename, value, origin, explicit, metadata)
 
         # Recursively parse dictionaries
         elif type(data) == dict:
             for attribute, metadata in data.items():
                 # Ignore line/column metadata
                 if attribute.startswith('__'): continue
-                self._dependencies(metadata, origin, explicit or attribute == 'depends_on', data)
+                self._dependencies(filename, metadata, origin, explicit or attribute == 'depends_on', data)
         
         else:
             raise ParserError(f'Unsupported data type: {type(data)}')
