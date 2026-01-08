@@ -207,8 +207,8 @@ class Parser:
         Recursively parse potential dependencies in a Terraform block's data.
         """
 
-        # An int has no dependencies
-        if type(data) == int:
+        # Ints and bools have no dependencies
+        if type(data) == int or type(data) == bool:
             pass
 
         # Strings can contain dependencies
