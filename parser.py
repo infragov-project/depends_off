@@ -51,14 +51,14 @@ class Parser:
             
             self._parse_file(module, str(p))
 
-        self.nodes.append(module.start)
-        self.nodes.append(module.end)
+        self.nodes.append(module.expand)
+        self.nodes.append(module.close)
 
         for node in module.nodes:
-            self.dependencies.append(Dependency(node, module.start))
+            self.dependencies.append(Dependency(node, module.expand))
             
         for node in module.nodes:
-            self.dependencies.append(Dependency(module.end, node))
+            self.dependencies.append(Dependency(module.close, node))
 
         return module
 
@@ -94,10 +94,10 @@ class Parser:
         submodule = self._parse_module(name['name'], path)
         module.submodules.append(submodule)
         
-        self.dependencies.append(Dependency(module.end, submodule.end))
-        self.dependencies.append(Dependency(submodule.start, module.start))
+        self.dependencies.append(Dependency(module.close, submodule.close))
+        self.dependencies.append(Dependency(submodule.expand, module.expand))
 
-        self._dependencies(data, submodule.start)
+        self._dependencies(data, submodule.expand)
     
     def _provider(self, module: Module, data: Any):
         provider, data = self._extract(data, 'name')

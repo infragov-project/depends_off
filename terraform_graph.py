@@ -44,8 +44,8 @@ class Resource(Node):
 class Module():
     def __init__(self, name: str, path: str):
         # Nodes that represent the start and end of the module in the dependency graph
-        self.start = Node(f'module.{name} (start)')
-        self.end = Node(f'module.{name} (end)')
+        self.expand = Node(f'module.{name} (expand)')
+        self.close = Node(f'module.{name} (close)')
 
         self.name = name
         self.path = path
