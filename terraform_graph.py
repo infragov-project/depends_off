@@ -1,6 +1,10 @@
 from __future__ import annotations
 
 class Range:
+    """
+    Represents a range in a source file.
+    """
+
     def __init__(self, start_line: int, start_column: int, end_line: int, end_column: int):
         self.start_line = start_line
         self.start_column = start_column
@@ -11,6 +15,10 @@ class Range:
         return f'{self.start_line}:{self.start_column}-{self.end_line}:{self.end_column}'
     
 class Node:
+    """
+    Represents a generic node in the dependency graph.
+    """
+
     _id_counter = 0
 
     def __init__(self, name: str, range: Range | None = None):
@@ -23,6 +31,9 @@ class Node:
         return self.name
     
 class Provider(Node):
+    """
+    Represents a provider node in the dependency graph.
+    """
     def __init__(self, name: str, alias: str | None, range: Range):
         if alias: name = f'{name}.{alias}'
         else: name = name
@@ -30,18 +41,31 @@ class Provider(Node):
         super().__init__(name, range)
     
 class Variable(Node):
+    """
+    Represents a variable node in the dependency graph.
+    """
     def __init__(self, name: str, range: Range):
         super().__init__(name, range)
     
 class Output(Node):
+    """
+    Represents an output node in the dependency graph.
+    """
     def __init__(self, name: str, range: Range):
         super().__init__(name, range)
 
 class Resource(Node):
+    """
+    Represents a resource node in the dependency graph.
+    """
     def __init__(self, type: str, name: str, range: Range):
         super().__init__(f'{type}.{name}', range)
     
 class Module():
+    """
+    Container for a module in the dependency graph. This includes the module's
+    nodes, submodules and expand and close nodes.
+    """
     def __init__(self, name: str, path: str):
         # Nodes that represent the start and end of the module in the dependency graph
         self.expand = Node(f'module.{name} (expand)')
@@ -56,6 +80,9 @@ class Module():
         self.submodules: list[Module] = []
         
 class Dependency:
+    """
+    Represents a dependency between two nodes in the dependency graph.
+    """
     def __init__(self, dependee: Node, depended: Node, explicit: bool = False, range: Range | None = None):
         self.dependee = dependee
         self.depended = depended
