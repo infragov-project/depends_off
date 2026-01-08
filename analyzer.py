@@ -72,5 +72,22 @@ class DependencyAnalyzer:
 
         return (a, -b)
     
+    def export(self, filename: str):
+        """
+        Create a DOT file with the dependency graph.
+        """
+
+        with open(filename, 'w') as f:
+            f.write('digraph G {\n')
+
+            for node in self.nodes:
+                f.write(f'    {node.id} [label="{node}"];\n')
+
+            for dependency in self.dependencies:
+                style = 'dashed' if not dependency.explicit else 'solid'
+                f.write(f'    {dependency.dependee_id} -> {dependency.depended_id} [style={style}];\n')
+
+            f.write('}\n')
+    
 class DependencyAnalyzerError(Exception):
     pass

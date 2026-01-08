@@ -5,3 +5,5 @@ __pycache__
 terrads-light
 tmp.py
 examples
+graph.dot
+graph.png
