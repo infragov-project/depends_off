@@ -26,12 +26,12 @@ for path in Path('terrads-light').rglob('*'):
         try:
             analyzer = DependencyAnalyzer(resources, dependencies)
             redundant = analyzer.redundant()
-            print(f'Analyzed {str(path)}: {len(redundant)} redundant dependencies')
+            print(f'Analyzed {str(path)}')
             analyzed += 1
             redundant_count += len(redundant)
 
             if len(redundant) > 0:
-                print('Redundant dependency found!', str(path))
+                print('Redundant dependencies found:', str(path))
         except Exception as e:
             print(f'Failed to analyze {str(path)}')
     except Exception as e:

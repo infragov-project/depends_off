@@ -69,7 +69,10 @@ class Parser:
         """
 
         with open(filename, 'r') as f:
-            content: Any = hcl2.load(f, with_meta=True) # type: ignore
+            try:
+                content: Any = hcl2.load(f, with_meta=True) # type: ignore
+            except Exception as e:
+                raise ParserError(f'HCL2 parsing error in {filename}: {str(e)}')
 
         if 'module' in content:
             for data in content['module']: self._module_block(module, filename, data)
