@@ -13,6 +13,7 @@ class Parser:
 
         self.nodes: list[Node] = list()
         self.dependencies: list[Dependency] = list()
+        self.node_map: dict[str, Node] = dict()
 
         # A list of dependencies to consider in the second pass. Contains tuples
         # of the form (dependent, is explicit, dependency declaration range,
@@ -26,8 +27,8 @@ class Parser:
             dependee = self._find_node(module, string)
             if dependee:
                 self.dependencies.append(Dependency(
-                    dependent.id,
-                    dependee.id,
+                    dependent,
+                    dependee,
                     explicit,
                     range
                 ))
@@ -54,10 +55,10 @@ class Parser:
         self.nodes.append(module.end)
 
         for node in module.nodes:
-            self.dependencies.append(Dependency(node.id, module.start.id, False, module.start.range))
+            self.dependencies.append(Dependency(node, module.start))
             
         for node in module.nodes:
-            self.dependencies.append(Dependency(module.end.id, node.id, False, module.end.range))
+            self.dependencies.append(Dependency(module.end, node))
 
         return module
 
@@ -93,8 +94,8 @@ class Parser:
         submodule = self._parse_module(name['name'], path)
         module.submodules.append(submodule)
         
-        self.dependencies.append(Dependency(module.end.id, submodule.end.id, False, module.end.range))
-        self.dependencies.append(Dependency(submodule.start.id, module.start.id, False, module.start.range))
+        self.dependencies.append(Dependency(module.end, submodule.end))
+        self.dependencies.append(Dependency(submodule.start, module.start))
 
         self._dependencies(data, submodule.start)
     
@@ -114,6 +115,7 @@ class Parser:
         ))
         module.nodes.append(provider)
         self.nodes.append(provider)
+        self.node_map[f'provider.{provider.name}'] = provider
 
         self._dependencies(data, provider)
 
@@ -129,6 +131,7 @@ class Parser:
         module.nodes.append(variable)
         module.variables.append(variable)
         self.nodes.append(variable)
+        self.node_map[f'var.{variable.name}'] = variable
         
         module.variables.append(variable)
 
@@ -144,6 +147,7 @@ class Parser:
         module.nodes.append(output)
         module.outputs.append(output)
         self.nodes.append(output)
+        self.node_map[f'output.{output.name}'] = output
 
         self._dependencies(data, output)
     
@@ -158,6 +162,7 @@ class Parser:
         ))
         module.nodes.append(resource)
         self.nodes.append(resource)
+        self.node_map[f'resource.{resource.name}'] = resource
 
         self._dependencies(data, resource)
 
@@ -195,13 +200,13 @@ class Parser:
 
         provider = match[1]
         alias = match[2]
-        return Provider.get_by_name(f'{provider}.{alias}')
+        return self.node_map.get(f'provider.{provider}.{alias}')
     
     def _find_var(self, string: str) -> Node | None:
         if string[:4] != "var.": return None
         
         name = string.split('.')[1]
-        return Variable.get_by_name(name)
+        return self.node_map.get(f'var.{name}')
     
     def _find_module_var(self, module: Module, string: str) -> Node | None:
         match = re.match(r'module\.(.+?)\.(.+?)(\..+)?$', string)
@@ -223,7 +228,7 @@ class Parser:
 
         type = match[1]
         name = match[2]
-        return Resource.get_by_name(f'{type}.{name}')
+        return self.node_map.get(f'resource.{type}.{name}')
     
     def _extract(self, data: dict[Any, Any], *arguments: str):
         result: dict[str, Any] = dict()

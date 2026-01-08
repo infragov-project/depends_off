@@ -19,7 +19,7 @@ class DependencyAnalyzer:
             self.graph.node(node.id)
 
         for dependency in self.dependencies:
-            try: self.graph.edge(dependency.dependee_id, dependency.depended_id)
+            try: self.graph.edge(dependency.dependee.id, dependency.depended.id)
             except CycleError: raise DependencyAnalyzerError(
                 f'the dependency graph has a cycle: cycle detected while adding {dependency}'
             )
@@ -40,7 +40,7 @@ class DependencyAnalyzer:
         explicit_dependencies = [d for d in self.dependencies if d.explicit]
 
         for dependency in explicit_dependencies:
-            self.graph.remove_edge(dependency.dependee_id, dependency.depended_id)
+            self.graph.remove_edge(dependency.dependee.id, dependency.depended.id)
 
         # Check if any of the explicit dependencies is redundant
         explicit_dependencies.sort(key = self._dependency_to_key)
@@ -49,10 +49,10 @@ class DependencyAnalyzer:
         for dependency in self.dependencies:
             if not dependency.explicit: continue
 
-            if self.graph.path(dependency.dependee_id, dependency.depended_id):
+            if self.graph.path(dependency.dependee.id, dependency.depended.id):
                 redundant_dependencies.append(dependency)
             
-            self.graph.edge(dependency.dependee_id, dependency.depended_id)
+            self.graph.edge(dependency.dependee.id, dependency.depended.id)
 
         return redundant_dependencies
 
@@ -67,8 +67,8 @@ class DependencyAnalyzer:
         # part of a path from c to d. As such, a <= c and b >= d in the
         # topological ordering.
 
-        a = self.graph.order(dependency.dependee_id)
-        b = self.graph.order(dependency.depended_id)
+        a = self.graph.order(dependency.dependee.id)
+        b = self.graph.order(dependency.depended.id)
 
         return (a, -b)
     
@@ -85,7 +85,7 @@ class DependencyAnalyzer:
 
             for dependency in self.dependencies:
                 style = 'dashed' if not dependency.explicit else 'solid'
-                f.write(f'    {dependency.dependee_id} -> {dependency.depended_id} [style={style}];\n')
+                f.write(f'    {dependency.dependee.id} -> {dependency.depended.id} [style={style}];\n')
 
             f.write('}\n')
     
