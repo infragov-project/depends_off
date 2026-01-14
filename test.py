@@ -2,41 +2,50 @@ from pathlib import Path
 from parser import Parser
 from analyzer import DependencyAnalyzer
 
-count = 0
+ROOT = Path('terrads-light')
+OUTPUT = Path('output.txt')
+
+def print_progress(parsed, analyzed, redundant, failed):
+    print(f'\rParsed: {parsed}\tAnalyzed: {analyzed}\tFailed: {failed}\tRedundant dependencies: {redundant}', end='')
+
+def has_tf_files(directory: Path) -> bool:
+    return any(p.suffix == '.tf' for p in directory.iterdir() if p.is_file())
+
 parsed = 0
 analyzed = 0
 redundant_count = 0
-
+failed = 0
 parser = Parser()
 
-for path in Path('terrads-light').rglob('*'):
-    if path.is_file(): continue
-    if not path.is_dir(): continue
+with OUTPUT.open('w') as out:
+    for path in ROOT.rglob('*'):
+        if not path.is_dir() or not has_tf_files(path):
+            continue
 
-    file_count = sum(1 for f in path.iterdir() if f.is_file() and f.name.endswith('.tf'))
-    if file_count == 0: continue
-
-    count += 1
-
-    try:
-        resources, dependencies = parser.parse(str(path))
-        print(f'Parsed {str(path)}')
-        parsed += 1
+        try:
+            resources, dependencies = parser.parse(str(path))
+            parsed += 1
+        except Exception as e:
+            out.write(f'Error parsing {path}.\n')
+            failed += 1
+            print_progress(parsed, analyzed, redundant_count, failed)
+            continue
 
         try:
             analyzer = DependencyAnalyzer(resources, dependencies)
             redundant = analyzer.redundant()
-            print(f'Analyzed {str(path)}')
             analyzed += 1
             redundant_count += len(redundant)
 
-            if len(redundant) > 0:
-                print('Redundant dependencies found:', str(path))
-        except Exception as e:
-            print(f'Failed to analyze {str(path)}')
-    except Exception as e:
-        print(f'Failed to parse {str(path)}')
+            if redundant:
+                out.write(f'Found {len(redundant)} redundant dependencies in {path}:\n')
+                for r in redundant:
+                    out.write(f'\t{r}\n')
 
-print(f'Parsed {parsed} out of {count} modules successfully.')
-print(f'Analyzed {analyzed} out of {count} modules successfully.')
-print(f'Total redundant dependencies found: {redundant_count}')
+        except Exception as e:
+            out.write(f'Error analyzing {path}.\n')
+            failed += 1
+
+        print_progress(parsed, analyzed, redundant_count, failed)
+
+print('\nDetailed feedback available in output.txt')
