@@ -114,7 +114,7 @@ class Parser:
         source = data['source']['value']
 
         path = module.path + '/' + source
-        submodule = self._parse_module_nodes(name['name'], path)
+        submodule = self._parse_module_nodes(f'{module.name}.{name['name']}', path)
         module.submodules.append(submodule)
         
         self.dependencies.append(Dependency(module.close, submodule.close))
