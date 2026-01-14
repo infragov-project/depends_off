@@ -46,14 +46,14 @@ class Variable(Node):
     Represents a variable node in the dependency graph.
     """
     def __init__(self, name: str, range: Range):
-        super().__init__(name, range)
+        super().__init__(f'var.{name}', range)
     
 class Output(Node):
     """
     Represents an output node in the dependency graph.
     """
     def __init__(self, name: str, range: Range):
-        super().__init__(name, range)
+        super().__init__(f'output.{name}', range)
 
 class Resource(Node):
     """

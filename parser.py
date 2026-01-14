@@ -23,14 +23,14 @@ class Parser:
 
         # A list of dependencies to consider in the second pass. Contains tuples
         # of the form (dependent, is explicit, dependency declaration range,
-        # dependency string)
-        self.potential_dependencies: list[tuple[Node, bool, Range, str]] = list()
+        # dependency string, module where the dependency was declared)
+        self.potential_dependencies: list[tuple[Node, bool, Range, str, Module]] = list()
 
         # First pass
-        module = self._parse_module_nodes('root', path)
+        self._parse_module_nodes('root', path)
 
         # Second pass
-        self._parse_dependencies(module)
+        self._parse_dependencies()
 
         return self.nodes, self.dependencies
 
@@ -89,11 +89,11 @@ class Parser:
         if 'resource' in content:
             for data in content['resource']: self._resource(module, filename, data)
     
-    def _parse_dependencies(self, module: Module):
+    def _parse_dependencies(self):
         """
         Resolve all potential dependencies in the dependency graph.
         """
-        for dependent, explicit, range, string in self.potential_dependencies:
+        for dependent, explicit, range, string, module in self.potential_dependencies:
             dependee = self._find_node(module, string)
             
             # Ignore self-references
@@ -120,7 +120,7 @@ class Parser:
         self.dependencies.append(Dependency(module.close, submodule.close))
         self.dependencies.append(Dependency(submodule.expand, module.expand))
 
-        self._dependencies(filename, data, submodule.expand)
+        self._dependencies(module, filename, data, submodule.expand)
     
     def _provider(self, module: Module, filename: str, data: Any):
         """
@@ -142,9 +142,9 @@ class Parser:
         ))
         module.nodes.append(provider)
         self.nodes.append(provider)
-        self.node_map[f'provider.{provider.name}'] = provider
+        self.node_map[f'{module.name}.provider.{provider.name}'] = provider
 
-        self._dependencies(filename, data, provider)
+        self._dependencies(module, filename, data, provider)
 
     def _variable(self, module: Module, filename: str, data: Any):
         """
@@ -162,7 +162,7 @@ class Parser:
         module.nodes.append(variable)
         module.variables.append(variable)
         self.nodes.append(variable)
-        self.node_map[f'var.{variable.name}'] = variable
+        self.node_map[f'{module.name}.{variable.name}'] = variable
         
         module.variables.append(variable)
 
@@ -182,9 +182,9 @@ class Parser:
         module.nodes.append(output)
         module.outputs.append(output)
         self.nodes.append(output)
-        self.node_map[f'output.{output.name}'] = output
+        self.node_map[f'{module.name}.{output.name}'] = output
 
-        self._dependencies(filename, data, output)
+        self._dependencies(module, filename, data, output)
     
     def _resource(self, module: Module, filename: str, data: Any):
         """
@@ -201,11 +201,11 @@ class Parser:
         ))
         module.nodes.append(resource)
         self.nodes.append(resource)
-        self.node_map[f'resource.{resource.name}'] = resource
+        self.node_map[f'{module.name}.resource.{resource.name}'] = resource
 
-        self._dependencies(filename, data, resource)
+        self._dependencies(module, filename, data, resource)
 
-    def _dependencies(self, filename: str, data: Any, origin: Node, explicit: bool = False, metadata: Any = {}):
+    def _dependencies(self, module: Module, filename: str, data: Any, origin: Node, explicit: bool = False, metadata: Any = {}):
         """
         Recursively parse potential dependencies in a Terraform block's data.
         """
@@ -224,23 +224,23 @@ class Parser:
                 metadata['__end_column__']
             )
             for match in re.finditer(r'\${(.+?)}', data):   
-                self.potential_dependencies.append((origin, explicit, range, match[1]))
+                self.potential_dependencies.append((origin, explicit, range, match[1], module))
             else:
                 # In explicit dependencies, the whole string may be a dependency
                 if explicit:
-                    self.potential_dependencies.append((origin, explicit, range, data))
+                    self.potential_dependencies.append((origin, explicit, range, data, module))
 
         # Recursively parse lists
         elif type(data) == list:
             for value in data: # type: ignore
-                self._dependencies(filename, value, origin, explicit, metadata)
+                self._dependencies(module, filename, value, origin, explicit, metadata)
 
         # Recursively parse dictionaries
         elif type(data) == dict:
             for attribute, metadata in data.items():
                 # Ignore line/column metadata
                 if attribute.startswith('__'): continue
-                self._dependencies(filename, metadata, origin, explicit or attribute == 'depends_on', data)
+                self._dependencies(module, filename, metadata, origin, explicit or attribute == 'depends_on', data)
         
         else:
             raise ParserError(f'Unsupported data type: {type(data)}')
@@ -249,9 +249,9 @@ class Parser:
         """
         Find a node in the dependency graph based on a dependency string.
         """
-        return self._find_var(string) or self._find_module_output(module, string) or self._find_provider(string) or self._find_resource(string)
+        return self._find_var(module, string) or self._find_module_output(module, string) or self._find_provider(module, string) or self._find_resource(module, string)
     
-    def _find_provider(self, string: str) -> Node | None:
+    def _find_provider(self, module: Module, string: str) -> Node | None:
         """
         Find a provider node based on a dependency string.
         """
@@ -260,16 +260,16 @@ class Parser:
 
         provider = match[1]
         alias = match[2]
-        return self.node_map.get(f'provider.{provider}.{alias}')
+        return self.node_map.get(f'{module.name}.provider.{provider}.{alias}')
     
-    def _find_var(self, string: str) -> Node | None:
+    def _find_var(self, module: Module, string: str) -> Node | None:
         """
         Find a variable node based on a dependency string.
         """
         if string[:4] != "var.": return None
         
         name = string.split('.')[1]
-        return self.node_map.get(f'var.{name}')
+        return self.node_map.get(f'{module.name}.var.{name}')
     
     def _find_module_output(self, module: Module, string: str) -> Node | None:
         """
@@ -279,7 +279,7 @@ class Parser:
         if not match: return None
 
         module_name = match[1]
-        output_name = match[2]
+        output_name = f'output.{match[2]}'
 
         m = next((m for m in module.submodules if m.name == module_name), None)
         if m is None: return None
@@ -288,7 +288,7 @@ class Parser:
 
         return o
     
-    def _find_resource(self, string: str) -> Node | None:
+    def _find_resource(self, module: Module, string: str) -> Node | None:
         """
         Find a resource node based on a dependency string.
         """
@@ -297,7 +297,7 @@ class Parser:
 
         type = match[1]
         name = match[2]
-        return self.node_map.get(f'resource.{type}.{name}')
+        return self.node_map.get(f'{module.name}.resource.{type}.{name}')
     
     def _extract(self, data: dict[Any, Any], *arguments: str):
         result: dict[str, Any] = dict()
