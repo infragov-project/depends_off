@@ -29,19 +29,23 @@ class Graph:
     
     def path(self, u: int, v: int):
         """
-        Check if there is a path from u to v
+        Check if there is a path from u to v and return path nodes.
         """
         return self._dfs(u, v, set())
 
     def _dfs(self, u: int, v: int, visited: set[int]):
-        if u == v: return True
+        """
+        Depth-first search to find a path from u to v and return path nodes.
+        """
+        if u == v: return [v]
 
         visited.add(u)
         for neighbor in self.edges[u]:
             if neighbor not in visited:
-                if self._dfs(neighbor, v, visited):
-                    return True
-        return False
+                path = self._dfs(neighbor, v, visited)
+                if path is not None:
+                    return [u] + path
+        return None
     
 class DAG(Graph):
     """

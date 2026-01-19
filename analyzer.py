@@ -13,6 +13,7 @@ class DependencyAnalyzer:
         """
         self.nodes = nodes
         self.dependencies = dependencies
+        self.id_to_node = {node.id: node for node in nodes}
 
         self.graph = DAG()
         for node in self.nodes:
@@ -44,13 +45,13 @@ class DependencyAnalyzer:
 
         # Check if any of the explicit dependencies is redundant
         explicit_dependencies.sort(key = self._dependency_to_key)
-        redundant_dependencies: list[Dependency] = list()
+        redundant_dependencies: list[tuple[Dependency, list[Node]]] = list()
 
         for dependency in explicit_dependencies:
-            if not dependency.explicit: continue
-
-            if self.graph.path(dependency.dependee.id, dependency.depended.id):
-                redundant_dependencies.append(dependency)
+            path = self.graph.path(dependency.dependee.id, dependency.depended.id)
+            if path is not None:
+                path = [self.id_to_node[id] for id in path]
+                redundant_dependencies.append((dependency, path))
             
             self.graph.edge(dependency.dependee.id, dependency.depended.id)
 

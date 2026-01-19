@@ -39,8 +39,9 @@ with OUTPUT.open('w') as out:
 
             if redundant:
                 out.write(f'Found {len(redundant)} redundant dependencies in {path}:\n')
-                for r in redundant:
-                    out.write(f'\t{r}\n')
+                for dependency, path in redundant:
+                    out.write(f'\t{dependency} via' + '\n')
+                    out.write('\t\t' + ' ->\n\t\t'.join(str(node) for node in path) + '\n')
 
         except Exception as e:
             out.write(f'Error analyzing {path}.\n')
