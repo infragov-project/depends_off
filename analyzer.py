@@ -46,7 +46,7 @@ class DependencyAnalyzer:
         explicit_dependencies.sort(key = self._dependency_to_key)
         redundant_dependencies: list[Dependency] = list()
 
-        for dependency in self.dependencies:
+        for dependency in explicit_dependencies:
             if not dependency.explicit: continue
 
             if self.graph.path(dependency.dependee.id, dependency.depended.id):
@@ -64,13 +64,13 @@ class DependencyAnalyzer:
         """
 
         # An edge X = (a, b) comes before an endge Y = (c, d) if it might be
-        # part of a path from c to d. As such, a <= c and b >= d in the
+        # part of a path from c to d. As such, a >= c and b <= d in the
         # topological ordering.
 
         a = self.graph.order(dependency.dependee.id)
         b = self.graph.order(dependency.depended.id)
 
-        return (a, -b)
+        return (-a, b)
     
     def export(self, filename: str):
         """

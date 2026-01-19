@@ -77,8 +77,9 @@ class DAG(Graph):
             if node not in visited:
                 segment: list[int] = list()
                 self._toposort_dfs(node, visited, segment)
-                sorted += reversed(segment)
-
+                sorted += segment
+        
+        sorted.reverse()
         self.topo_order = {node: i for i, node in enumerate(sorted)}
     
     def order(self, u: int):
@@ -89,12 +90,12 @@ class DAG(Graph):
     
     def _toposort_dfs(self, u: int, visited: set[int], segment: list[int]):
         visited.add(u)
-        segment.append(u)
 
         for neighbor in self.edges[u]:
             if neighbor not in visited:
                 self._toposort_dfs(neighbor, visited, segment)
 
+        segment.append(u)
         return segment
 
 class CycleError(Exception):
