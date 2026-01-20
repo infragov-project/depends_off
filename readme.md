@@ -4,7 +4,7 @@ A tool that detects redundant Terraform dependencies.
 
 ## Usage
 
-To parse the dependency graph of a given module and detect redundancies, provide the tool with the path to the directory containing the module (or leave empty for the current path). There is also an option to output the inferred dependency graph in DOT format.
+To parse the dependency graph of a given module and detect redundancies, provide the tool with the path to the directory containing the module (or leave empty for the current directory). There is also an option to output the inferred dependency graph in DOT format.
 
 ```
 $ python3 main.py [directory] [--graph path.dot]

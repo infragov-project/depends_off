@@ -278,7 +278,7 @@ class Parser:
         match = re.match(r'module\.(.+?)\.(.+?)(\..+)?$', string)
         if not match: return None
 
-        module_name = match[1]
+        module_name = f'{module.name}.{match[1]}'
         output_name = f'output.{match[2]}'
 
         m = next((m for m in module.submodules if m.name == module_name), None)
