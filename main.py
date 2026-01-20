@@ -1,27 +1,25 @@
 from parser import Parser
-from analyzer import DependencyAnalyzer, DependencyAnalyzerError
+from analyzer import DependencyAnalyzer
+import argparse
 
-# Parse the Terraform file
+argument_parser = argparse.ArgumentParser(usage='%(prog)s [directory]')
+argument_parser.add_argument('directory', default='.', nargs='?')
+argument_parser.add_argument('--graph')
+arguments = argument_parser.parse_args()
 
-resources, dependencies = Parser.parse('.')
+parser = Parser()
+nodes, dependencies = parser.parse(arguments.directory)
 
-print('resources:')
-for resource in resources: print(resource)
-print()
-print('dependencies:')
-for dependency in dependencies: print(dependency)
-print()
+analyzer = DependencyAnalyzer(nodes, dependencies)
+redundant = analyzer.redundant()
 
-# Search for redundant dependencies
+print(f'Total nodes: {len(nodes)}')
+print(f'Total dependencies: {len(dependencies)}')
+print(f'Redundant dependencies: {len(redundant)}')
+for dependency, path in redundant:
+    print(f'\t{dependency} via')
+    print('\t\t' + ' ->\n\t\t'.join(str(node) for node in path))
 
-try: analyzer = DependencyAnalyzer(resources, dependencies)
-except DependencyAnalyzerError as e:
-    print(e)
-    exit(1)
-
-redundant_dependencies = analyzer.redundant()
-
-if len(redundant_dependencies) == 0:
-    print('no redundant dependencies found')
-for dependency in redundant_dependencies:
-    print(f'redundant dependency found: {dependency}')
+if arguments.graph:
+    analyzer.export(arguments.graph)
+    print(f'Dependency graph exported to {arguments.graph}')
