@@ -40,11 +40,13 @@ class Report:
 
         report = {
             'version': '2.1.0',
-            '$schema': 'https://schemastore.azurewebsites.net/schemas/json/sarif-2.1.0-rtm.4.json',
+            '$schema': 'https://docs.oasis-open.org/sarif/sarif/v2.1.0/errata01/os/schemas/sarif-schema-2.1.0.json',
             'runs': [{
                 'tool': {
                     'driver': {
-                        'name': 'terraform-3d'
+                        'name': 'terraform-3d',
+                        'version': '1.0.0',
+                        'informationUri': 'https://github.com/bogosorter/terraform-3d'
                     }
                 },
                 'results': [
