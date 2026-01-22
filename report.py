@@ -39,20 +39,18 @@ class Report:
         """
 
         report = {
-            "version": "2.1.0",
-            "$schema": "https://schemastore.azurewebsites.net/schemas/json/sarif-2.1.0-rtm.4.json",
-            "runs": [
-                {
-                "tool": {
-                    "driver": {
-                    "name": "terraform-3d"
+            'version': '2.1.0',
+            '$schema': 'https://schemastore.azurewebsites.net/schemas/json/sarif-2.1.0-rtm.4.json',
+            'runs': [{
+                'tool': {
+                    'driver': {
+                        'name': 'terraform-3d'
                     }
                 },
-                "results": [
+                'results': [
                     self._sarif_result(dependency, path) for dependency, path in self.redundant_dependencies
-                    ]
-                }
-            ]
+                ]
+            }]
         }
 
         return json.dumps(report, indent=4) + '\n'
@@ -63,21 +61,21 @@ class Report:
         """
 
         result = {
-            "ruleId": "no-redundant-dependencies",
-            "level": "warning",
-            "message": {
-                "text": f'Redundant dependency found: {dependency} via\n\t' + ' ->\n\t'.join(str(node) for node in path)
+            'ruleId': 'no-redundant-dependencies',
+            'level': 'warning',
+            'message': {
+                'text': f'Redundant dependency found: {dependency} via\n\t' + ' ->\n\t'.join(str(node) for node in path)
             },
-            "locations": [{
-                "physicalLocation": {
-                    "artifactLocation": {
-                        "uri": dependency.range.filename
+            'locations': [{
+                'physicalLocation': {
+                    'artifactLocation': {
+                        'uri': dependency.range.filename
                     },
-                    "region": {
-                        "startLine": dependency.range.start_line,
-                        "startColumn": dependency.range.start_column,
-                        "endLine": dependency.range.end_line,
-                        "endColumn": dependency.range.end_column
+                    'region': {
+                        'startLine': dependency.range.start_line,
+                        'startColumn': dependency.range.start_column,
+                        'endLine': dependency.range.end_line,
+                        'endColumn': dependency.range.end_column
                     }
                 }
             }]
