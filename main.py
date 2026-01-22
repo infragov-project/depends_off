@@ -1,5 +1,6 @@
 from parser import Parser
 from analyzer import DependencyAnalyzer
+from report import Report
 import argparse
 
 argument_parser = argparse.ArgumentParser(usage='%(prog)s [directory]')
@@ -13,12 +14,8 @@ nodes, dependencies = parser.parse(arguments.directory)
 analyzer = DependencyAnalyzer(nodes, dependencies)
 redundant = analyzer.redundant()
 
-print(f'Total nodes: {len(nodes)}')
-print(f'Total dependencies: {len(dependencies)}')
-print(f'Redundant dependencies: {len(redundant)}')
-for dependency, path in redundant:
-    print(f'\t{dependency} via')
-    print('\t\t' + ' ->\n\t\t'.join(str(node) for node in path))
+report = Report(nodes, dependencies, redundant)
+print(report.human_readable(), end='')
 
 if arguments.graph:
     analyzer.export(arguments.graph)

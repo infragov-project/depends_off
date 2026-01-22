@@ -92,5 +92,5 @@ class Dependency:
     
     def __str__(self):
         if self.range:
-            return f'{self.dependee} -> {self.depended} {'(explicit)' if self.explicit else ''} at {self.range}'
-        return f'{self.dependee} -> {self.depended} {'(explicit)' if self.explicit else ''}'
+            return f'{self.dependee} -> {self.depended} at {self.range}'
+        return f'{self.dependee} -> {self.depended}'
