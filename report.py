@@ -1,12 +1,12 @@
 import json
-from terraform_graph import Dependency, Node
+from terraform_graph import Node, Dependency, ExplicitDependency
 
 class Report:
     """
     Class that represents the result of a redundant dependency analysis.
     """
 
-    def __init__(self, nodes: list[Node], dependencies: list[Dependency], redundant_dependencies: list[tuple[Dependency, list[Node]]]):
+    def __init__(self, nodes: list[Node], dependencies: list[Dependency], redundant_dependencies: list[tuple[ExplicitDependency, list[Node]]]):
         """
         Initialize the report with the given redundant dependencies.
         """
@@ -55,7 +55,7 @@ class Report:
 
         return json.dumps(report, indent=4) + '\n'
     
-    def _sarif_result(self, dependency: Dependency, path: list[Node]):
+    def _sarif_result(self, dependency: ExplicitDependency, path: list[Node]):
         """
         Generate a SARIF result for a redundant dependency.
         """

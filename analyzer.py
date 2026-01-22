@@ -1,4 +1,4 @@
-from terraform_graph import Node, Dependency
+from terraform_graph import Node, Dependency, ExplicitDependency
 from graph import DAG, CycleError
 
 class DependencyAnalyzer:
@@ -38,14 +38,14 @@ class DependencyAnalyzer:
         # added, all the edges that an alternative path might have used have already
         # been added to the graph.
 
-        explicit_dependencies = [d for d in self.dependencies if d.explicit]
+        explicit_dependencies = [d for d in self.dependencies if type(d) is ExplicitDependency]
 
         for dependency in explicit_dependencies:
             self.graph.remove_edge(dependency.dependee.id, dependency.depended.id)
 
         # Check if any of the explicit dependencies is redundant
         explicit_dependencies.sort(key = self._dependency_to_key)
-        redundant_dependencies: list[tuple[Dependency, list[Node]]] = list()
+        redundant_dependencies: list[tuple[ExplicitDependency, list[Node]]] = list()
 
         for dependency in explicit_dependencies:
             path = self.graph.path(dependency.dependee.id, dependency.depended.id)
@@ -57,7 +57,7 @@ class DependencyAnalyzer:
 
         return redundant_dependencies
 
-    def _dependency_to_key(self, dependency: Dependency):
+    def _dependency_to_key(self, dependency: ExplicitDependency):
         """
         Transform a dependency into a sorting key, such that the edges can be
         added one by one, and when one edge is inserted all the edges that an
@@ -85,7 +85,7 @@ class DependencyAnalyzer:
                 f.write(f'    {node.id} [label="{node}"];\n')
 
             for dependency in self.dependencies:
-                style = 'dashed' if not dependency.explicit else 'solid'
+                style = 'dashed' if type(dependency) is not ExplicitDependency else 'solid'
                 f.write(f'    {dependency.dependee.id} -> {dependency.depended.id} [style={style}];\n')
 
             f.write('}\n')

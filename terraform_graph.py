@@ -84,11 +84,18 @@ class Dependency:
     """
     Represents a dependency between two nodes in the dependency graph.
     """
-    def __init__(self, dependee: Node, depended: Node, explicit: bool = False, range: Range | None = None):
+    def __init__(self, dependee: Node, depended: Node, range: Range | None = None):
         self.dependee = dependee
         self.depended = depended
         self.range = range
-        self.explicit = explicit
     
     def __str__(self):
         return f'{self.dependee} -> {self.depended}'
+    
+class ExplicitDependency(Dependency):
+    """
+    Represents an explicit dependency between two nodes in the dependency graph.
+    """
+    def __init__(self, dependee: Node, depended: Node, range: Range):
+        super().__init__(dependee, depended, range)
+        self.range = range

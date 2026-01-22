@@ -2,7 +2,7 @@ from pathlib import Path
 import re
 import hcl2
 from typing import Any
-from terraform_graph import Node, Provider, Variable, Output, Resource, Dependency, Range, Module
+from terraform_graph import Node, Provider, Variable, Output, Resource, Dependency, ExplicitDependency, Range, Module
 
 class Parser:
     def parse(self, path: str):
@@ -96,13 +96,18 @@ class Parser:
         for dependent, explicit, range, string, module in self.potential_dependencies:
             dependee = self._find_node(module, string)
             
-            # Ignore self-references
-            if dependee == dependent: continue
+            if dependee is None: continue
+            if dependee == dependent: continue # ignore self-references
 
-            if dependee: self.dependencies.append(Dependency(
+            if explicit: self.dependencies.append(ExplicitDependency(
                 dependent,
                 dependee,
-                explicit,
+                range
+            ))
+
+            else: self.dependencies.append(Dependency(
+                dependent,
+                dependee,
                 range
             ))
 
