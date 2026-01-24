@@ -2,7 +2,7 @@ from pathlib import Path
 import re
 import hcl2
 from typing import Any
-from terraform_graph import Data, Node, Provider, Variable, Output, Resource, Dependency, ExplicitDependency, Range, Module
+from terraform_graph import Node, Provider, Variable, Output, Data, Local, Resource, Dependency, ExplicitDependency, Range, Module
 
 class Parser:
     def parse(self, path: str):
@@ -85,6 +85,9 @@ class Parser:
 
         if 'data' in content:
             for data in content['data']: self._data(module, filename, data)
+
+        if 'locals' in content:
+            for data in content['locals']: self._locals(module, filename, data)
 
         if 'provider' in content:
             for data in content['provider']: self._provider(module, filename, data)
@@ -212,6 +215,27 @@ class Parser:
         self.node_map[f'{module.name}.{node.name}'] = node
         
         self._dependencies(module, filename, data, node)
+
+    def _locals(self, module: Module, filename: str, data: Any):
+        """
+        Parse a locals block in a Terraform file.
+        """
+        for name, metadata in data.items():
+            if name.startswith('__'): continue
+
+            local = Local(name, Range(
+                filename,
+                metadata['__start_line__'],
+                metadata['__start_column__'],
+                metadata['__end_line__'],
+                metadata['__end_column__']
+            ))
+
+            module.nodes.append(local)
+            self.nodes.append(local)
+            self.node_map[f'{module.name}.{local.name}'] = local
+
+            self._dependencies(module, filename, metadata, local)
     
     def _resource(self, module: Module, filename: str, data: Any):
         """
@@ -276,7 +300,7 @@ class Parser:
         """
         Find a node in the dependency graph based on a dependency string.
         """
-        return self._find_var(module, string) or self._find_module_output(module, string) or self._find_data(module, string) or self._find_provider(module, string) or self._find_resource(module, string)
+        return self._find_var(module, string) or self._find_module_output(module, string) or self._find_data(module, string) or self._find_local(module, string) or self._find_provider(module, string) or self._find_resource(module, string)
     
     def _find_provider(self, module: Module, string: str) -> Node | None:
         """
@@ -325,6 +349,15 @@ class Parser:
         type = match[1]
         name = match[2]
         return self.node_map.get(f'{module.name}.data.{type}.{name}')
+    
+    def _find_local(self, module: Module, string: str) -> Node | None:
+        """
+        Find a local node based on a dependency string.
+        """
+        if string[:6] != 'local.': return None
+        
+        name = string.split('.')[1]
+        return self.node_map.get(f'{module.name}.local.{name}')
     
     def _find_resource(self, module: Module, string: str) -> Node | None:
         """

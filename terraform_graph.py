@@ -62,6 +62,13 @@ class Data(Node):
     def __init__(self, type: str, name: str, range: Range):
         super().__init__(f'data.{type}.{name}', range)
 
+class Local(Node):
+    """
+    Represents a local node in the dependency graph.
+    """
+    def __init__(self, name: str, range: Range):
+        super().__init__(f'local.{name}', range)
+
 class Resource(Node):
     """
     Represents a resource node in the dependency graph.

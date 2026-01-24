@@ -21,14 +21,9 @@ class DependencyAnalyzer:
 
         for dependency in self.dependencies:
             try: self.graph.edge(dependency.dependee.id, dependency.depended.id)
-            except CycleError:
-                path = self.graph.path(dependency.depended.id, dependency.dependee.id)
-                path = [self.id_to_node[id] for id in path] if path is not None else []
-                for p in path:
-                    print(f'    {p}')
-                raise DependencyAnalyzerError(
-                    f'the dependency graph has a cycle: cycle detected while adding {dependency}'
-                )
+            except CycleError: raise DependencyAnalyzerError(
+                f'the dependency graph has a cycle: cycle detected while adding {dependency}'
+            )
 
     def redundant(self):
         """
