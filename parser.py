@@ -2,7 +2,7 @@ from pathlib import Path
 import re
 import hcl2
 from typing import Any
-from terraform_graph import Node, Provider, Variable, Output, Resource, Dependency, ExplicitDependency, Range, Module
+from terraform_graph import Data, Node, Provider, Variable, Output, Resource, Dependency, ExplicitDependency, Range, Module
 
 class Parser:
     def parse(self, path: str):
@@ -82,6 +82,9 @@ class Parser:
 
         if 'output' in content:
             for data in content['output']: self._output(module, filename, data)
+
+        if 'data' in content:
+            for data in content['data']: self._data(module, filename, data)
 
         if 'provider' in content:
             for data in content['provider']: self._provider(module, filename, data)
@@ -190,6 +193,25 @@ class Parser:
         self.node_map[f'{module.name}.{output.name}'] = output
 
         self._dependencies(module, filename, data, output)
+
+    def _data(self, module: Module, filename: str, data: Any):
+        """
+        Parse a data block in a Terraform file.
+        """
+        block, data = self._extract(data, 'type', 'name')
+
+        node = Data(block['type'], block['name'], Range(
+            filename,
+            data['__start_line__'],
+            data['__start_column__'],
+            data['__end_line__'],
+            data['__end_column__']
+        ))
+        module.nodes.append(node)
+        self.nodes.append(node)
+        self.node_map[f'{module.name}.{node.name}'] = node
+        
+        self._dependencies(module, filename, data, node)
     
     def _resource(self, module: Module, filename: str, data: Any):
         """
@@ -254,7 +276,7 @@ class Parser:
         """
         Find a node in the dependency graph based on a dependency string.
         """
-        return self._find_var(module, string) or self._find_module_output(module, string) or self._find_provider(module, string) or self._find_resource(module, string)
+        return self._find_var(module, string) or self._find_module_output(module, string) or self._find_data(module, string) or self._find_provider(module, string) or self._find_resource(module, string)
     
     def _find_provider(self, module: Module, string: str) -> Node | None:
         """
@@ -292,6 +314,17 @@ class Parser:
         o = next((o for o in m.outputs if o.name == output_name), None)
 
         return o
+    
+    def _find_data(self, module: Module, string: str) -> Node | None:
+        """
+        Find a data node based on a dependency string.
+        """
+        match = re.match(r'data\.(.+?)\.(.+?)(\..+)?$', string)
+        if not match: return None
+
+        type = match[1]
+        name = match[2]
+        return self.node_map.get(f'{module.name}.data.{type}.{name}')
     
     def _find_resource(self, module: Module, string: str) -> Node | None:
         """

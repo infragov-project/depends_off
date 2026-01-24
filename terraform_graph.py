@@ -55,6 +55,13 @@ class Output(Node):
     def __init__(self, name: str, range: Range):
         super().__init__(f'output.{name}', range)
 
+class Data(Node):
+    """
+    Represents a data node in the dependency graph.
+    """
+    def __init__(self, type: str, name: str, range: Range):
+        super().__init__(f'data.{type}.{name}', range)
+
 class Resource(Node):
     """
     Represents a resource node in the dependency graph.
