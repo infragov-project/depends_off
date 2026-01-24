@@ -1,7 +1,7 @@
-from parser import Parser
-from analyzer import DependencyAnalyzer
-from report import Report
 import argparse
+from src.parser import Parser
+from src.analyzer import DependencyAnalyzer
+from src.report import Report
 
 argument_parser = argparse.ArgumentParser(usage='%(prog)s [directory]')
 argument_parser.add_argument('directory', default='.', nargs='?')

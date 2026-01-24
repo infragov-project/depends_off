@@ -1,5 +1,5 @@
 import json
-from terraform_graph import Node, Dependency, ExplicitDependency
+from src.terraform_graph import Node, Dependency, ExplicitDependency
 
 class Report:
     """

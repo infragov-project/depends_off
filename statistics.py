@@ -1,9 +1,9 @@
-from pathlib import Path
-from parser import Parser
-from analyzer import DependencyAnalyzer
 from typing import TextIO
+from pathlib import Path
+from src.parser import Parser
+from src.analyzer import DependencyAnalyzer
 
-ROOT = Path('terrads-light')
+ROOT = Path('dataset')
 OUTPUT = Path('output.txt')
 
 parsed = 0

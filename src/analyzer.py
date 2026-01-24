@@ -1,5 +1,5 @@
-from terraform_graph import Node, Dependency, ExplicitDependency
-from graph import DAG, CycleError
+from src.terraform_graph import Node, Dependency, ExplicitDependency
+from src.graph import DAG, CycleError
 
 class DependencyAnalyzer:
     """

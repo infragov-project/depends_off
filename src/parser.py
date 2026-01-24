@@ -2,7 +2,7 @@ from pathlib import Path
 import re
 import hcl2
 from typing import Any
-from terraform_graph import Node, Provider, Variable, Output, Data, Local, Resource, Dependency, ExplicitDependency, Range, Module
+from src.terraform_graph import Node, Provider, Variable, Output, Data, Local, Resource, Dependency, ExplicitDependency, Range, Module
 
 class Parser:
     def parse(self, path: str):

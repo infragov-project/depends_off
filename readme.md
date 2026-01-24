@@ -65,13 +65,13 @@ resource "aws_instance" "server" {
 
 This is visible in the generated plan with and without the redundant dependency. If there were more items in the `app` module, they would be unnecessarily dependent on the variable, which could slow down deployment:
 
-![Terraform plan without the redundant dependency](./images/expected.png)
+![Terraform plan without the redundant dependency](./docs/expected.png)
 
 <p style="text-align: center;">
     Figure 1: Terraform plan without the redundant dependency. The <code>module.app</code> expand node does not depend on the output variable.
 </p>
 
-![Terraform plan with the redundant dependency](./images/redundant.png)
+![Terraform plan with the redundant dependency](./docs/redundant.png)
 
 <p style="text-align: center;">
     Figure 2: Terraform plan with the redundant dependency. The <code>module.app</code> expand node depends on the output variable, and the entire dependency graph becomes less parallelizable.

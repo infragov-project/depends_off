@@ -2,10 +2,10 @@ env
 main.go
 test.tf
 __pycache__
-terrads-light
 tmp.py
 examples
 graph.dot
 graph.png
 output.txt
 example.sarif
+dataset
