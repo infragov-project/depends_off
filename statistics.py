@@ -41,7 +41,7 @@ def process_directory(directory: Path, out: TextIO):
             out.write(f'Found {len(redundant)} redundant dependencies in {directory}:\n')
             for dependency, path in redundant:
                 out.write(f'\t{dependency} via' + '\n')
-                out.write('\t\t' + ' ->\n\t\t'.join(str(node) for node in path) + '\n')
+                out.write('\t\t' + '\n\t\t'.join(str(dependency) for dependency in path) + '\n')
 
     except Exception as e:
         out.write(f'Error analyzing {directory}.\n')

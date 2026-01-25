@@ -6,7 +6,7 @@ class Graph:
     def __init__(self):
         self.nodes: set[int] = set()
         # edges matches a node to a list of its outgoing edges
-        self.edges: dict[int, list[int]] = dict()
+        self.edges: dict[int, list[tuple[int, int]]] = dict()
 
     def node(self, node: int):
         """
@@ -15,36 +15,36 @@ class Graph:
         self.nodes.add(node)
         self.edges[node] = list()
     
-    def edge(self, u: int, v: int):
+    def edge(self, id: int, u: int, v: int):
         """
         Add an edge from u to v
         """
-        self.edges[u].append(v)
+        self.edges[u].append((id, v))
     
-    def remove_edge(self, u: int, v: int):
+    def remove_edge(self, id: int, u: int):
         """
         Remove the edge from u to v
         """
-        self.edges[u].remove(v)
+        self.edges[u] = [edge for edge in self.edges[u] if edge[0] != id]
     
     def path(self, u: int, v: int):
         """
-        Check if there is a path from u to v and return path nodes.
+        Check if there is a path from u to v and return path edges.
         """
         return self._dfs(u, v, set())
 
-    def _dfs(self, u: int, v: int, visited: set[int]):
+    def _dfs(self, u: int, v: int, visited: set[int]) -> list[int] | None:
         """
-        Depth-first search to find a path from u to v and return path nodes.
+        Depth-first search to find a path from u to v and return path edges.
         """
-        if u == v: return [v]
+        if u == v: return []
 
         visited.add(u)
-        for neighbor in self.edges[u]:
-            if neighbor not in visited:
-                path = self._dfs(neighbor, v, visited)
+        for edge in self.edges[u]:
+            if edge[1] not in visited:
+                path = self._dfs(edge[1], v, visited)
                 if path is not None:
-                    return [u] + path
+                    return [edge[0]] + path
         return None
     
 class DAG(Graph):
@@ -52,14 +52,14 @@ class DAG(Graph):
     Simple directed acyclic graph
     """
 
-    def edge(self, u: int, v: int):
+    def edge(self, id: int, u: int, v: int):
         """
         Add an edge from u to v. If the edge creates a cycle, a CycleError is
         raised.
         """
         if self.path(v, u):
             raise CycleError()
-        super().edge(u, v)
+        super().edge(id, u, v)
 
     def toposort(self):
         """
@@ -95,9 +95,9 @@ class DAG(Graph):
     def _toposort_dfs(self, u: int, visited: set[int], segment: list[int]):
         visited.add(u)
 
-        for neighbor in self.edges[u]:
-            if neighbor not in visited:
-                self._toposort_dfs(neighbor, visited, segment)
+        for edge in self.edges[u]:
+            if edge[1] not in visited:
+                self._toposort_dfs(edge[1], visited, segment)
 
         segment.append(u)
         return segment

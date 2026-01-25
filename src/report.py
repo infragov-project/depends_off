@@ -6,7 +6,7 @@ class Report:
     Class that represents the result of a redundant dependency analysis.
     """
 
-    def __init__(self, nodes: list[Node], dependencies: list[Dependency], redundant_dependencies: list[tuple[ExplicitDependency, list[Node]]]):
+    def __init__(self, nodes: list[Node], dependencies: list[Dependency], redundant_dependencies: list[tuple[ExplicitDependency, list[Dependency]]]):
         """
         Initialize the report with the given redundant dependencies.
         """
@@ -20,7 +20,6 @@ class Report:
         """
 
         result = str()
-        result += 'Redundant Dependencies Report\n\n'
         result += f'Total nodes: {len(self.nodes)}\n'
         result += f'Total dependencies: {len(self.dependencies)}\n'
 
@@ -29,7 +28,7 @@ class Report:
             result += 'Redundant dependencies:\n'
             for dependency, path in self.redundant_dependencies:
                 result += f'\t{dependency} at {dependency.range} \n\tvia\t'
-                result += ' ->\n\t\t'.join(str(node) for node in path) + '\n'
+                result += '\n\t\t'.join(str(dependency) for dependency in path) + '\n'
 
         return result
     
@@ -57,7 +56,7 @@ class Report:
 
         return json.dumps(report, indent=4) + '\n'
     
-    def _sarif_result(self, dependency: ExplicitDependency, path: list[Node]):
+    def _sarif_result(self, dependency: ExplicitDependency, path: list[Dependency]):
         """
         Generate a SARIF result for a redundant dependency.
         """
@@ -66,7 +65,7 @@ class Report:
             'ruleId': 'no-redundant-dependencies',
             'level': 'warning',
             'message': {
-                'text': f'Redundant dependency found: {dependency} via\n\t' + ' ->\n\t'.join(str(node) for node in path)
+                'text': f'Redundant dependency found: {dependency} via\n\t' + '\n\t'.join(str(dependency) for dependency in path)
             },
             'locations': [{
                 'physicalLocation': {

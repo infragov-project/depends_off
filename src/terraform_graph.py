@@ -98,7 +98,13 @@ class Dependency:
     """
     Represents a dependency between two nodes in the dependency graph.
     """
+
+    _id_counter = 0
+
     def __init__(self, dependee: Node, depended: Node, declaration: Node, range: Range | None = None):
+        self.id = Dependency._id_counter
+        Dependency._id_counter += 1
+        
         self.dependee = dependee
         self.depended = depended
         self.declaration = declaration

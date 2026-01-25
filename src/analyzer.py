@@ -14,13 +14,14 @@ class DependencyAnalyzer:
         self.nodes = nodes
         self.dependencies = dependencies
         self.id_to_node = {node.id: node for node in nodes}
+        self.id_to_dependency = {dependency.id: dependency for dependency in dependencies}
 
         self.graph = DAG()
         for node in self.nodes:
             self.graph.node(node.id)
 
         for dependency in self.dependencies:
-            try: self.graph.edge(dependency.dependee.id, dependency.depended.id)
+            try: self.graph.edge(dependency.id, dependency.dependee.id, dependency.depended.id)
             except CycleError: raise DependencyAnalyzerError(
                 f'the dependency graph has a cycle: cycle detected while adding {dependency}'
             )
@@ -41,19 +42,19 @@ class DependencyAnalyzer:
         explicit_dependencies = [d for d in self.dependencies if type(d) is ExplicitDependency]
 
         for dependency in explicit_dependencies:
-            self.graph.remove_edge(dependency.dependee.id, dependency.depended.id)
+            self.graph.remove_edge(dependency.id, dependency.dependee.id)
 
         # Check if any of the explicit dependencies is redundant
         explicit_dependencies.sort(key = self._dependency_to_key)
-        redundant_dependencies: list[tuple[ExplicitDependency, list[Node]]] = list()
+        redundant_dependencies: list[tuple[ExplicitDependency, list[Dependency]]] = list()
 
         for dependency in explicit_dependencies:
             path = self.graph.path(dependency.dependee.id, dependency.depended.id)
             if path is not None:
-                path = [self.id_to_node[id] for id in path]
+                path = [self.id_to_dependency[id] for id in path]
                 redundant_dependencies.append((dependency, path))
             
-            self.graph.edge(dependency.dependee.id, dependency.depended.id)
+            self.graph.edge(dependency.id, dependency.dependee.id, dependency.depended.id)
 
         return redundant_dependencies
 
