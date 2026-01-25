@@ -67,6 +67,8 @@ class DependencyAnalyzer:
                 else:
                     possibly_redundant_dependencies.append((dependency, path))
 
+            self.graph.edge(dependency.id, dependency.dependee.id, dependency.depended.id, False)
+
         return redundant_dependencies, possibly_redundant_dependencies
 
     def _dependency_to_key(self, dependency: ExplicitDependency):
