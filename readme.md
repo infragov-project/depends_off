@@ -2,6 +2,16 @@
 
 A tool that detects redundant Terraform dependencies.
 
+## Installation
+
+To run the tool, create a virtual environment and install the required packages:
+
+```
+$ python3 -m venv env
+$ source env/bin/activate
+$ pip3 install -r requirements.txt
+```
+
 ## Usage
 
 To parse the dependency graph of a given module and detect redundancies, provide the tool with the path to the directory containing the module (or leave empty for the current directory). There is also an option to output the inferred dependency graph in DOT and an option for SARIF output:
