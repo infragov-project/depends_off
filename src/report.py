@@ -1,18 +1,21 @@
 import json
 from src.terraform_graph import Node, Dependency, ExplicitDependency
 
+type RedundantList = list[tuple[ExplicitDependency, list[Dependency]]]
+
 class Report:
     """
     Class that represents the result of a redundant dependency analysis.
     """
 
-    def __init__(self, nodes: list[Node], dependencies: list[Dependency], redundant_dependencies: list[tuple[ExplicitDependency, list[Dependency]]]):
+    def __init__(self, nodes: list[Node], dependencies: list[Dependency], redundant: RedundantList, possibly_redundant: RedundantList):
         """
         Initialize the report with the given redundant dependencies.
         """
         self.nodes = nodes
         self.dependencies = dependencies
-        self.redundant_dependencies = redundant_dependencies
+        self.redundant_dependencies = redundant
+        self.possibly_redundant_dependencies = possibly_redundant
 
     def human_readable(self):
         """
@@ -28,6 +31,13 @@ class Report:
             result += 'Redundant dependencies:\n'
             for dependency, path in self.redundant_dependencies:
                 result += f'\t{dependency} at {dependency.range} \n\tvia\t'
+                result += '\n\t\t'.join(str(dependency) for dependency in path) + '\n'
+
+        if (len(self.possibly_redundant_dependencies) == 0): result += 'No possibly redundant dependencies found.\n'
+        else:
+            result += 'Possibly redundant dependencies:\n'
+            for dependency, path in self.possibly_redundant_dependencies:
+                result += f'\t{dependency} at {dependency.range}\n\tvia\t'
                 result += '\n\t\t'.join(str(dependency) for dependency in path) + '\n'
 
         return result

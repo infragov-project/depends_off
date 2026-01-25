@@ -21,14 +21,13 @@ class DependencyAnalyzer:
             self.graph.node(node.id)
 
         for dependency in self.dependencies:
-            try: self.graph.edge(dependency.id, dependency.dependee.id, dependency.depended.id)
+            try: self.graph.edge(dependency.id, dependency.dependee.id, dependency.depended.id, False)
             except CycleError: raise DependencyAnalyzerError(
                 f'the dependency graph has a cycle: cycle detected while adding {dependency}'
             )
 
             if dependency.dependee != dependency.declaration:
-                print(dependency)
-                try: self.graph.edge(dependency.id, dependency.declaration.id, dependency.depended.id)
+                try: self.graph.edge(dependency.id, dependency.declaration.id, dependency.depended.id, True)
                 except CycleError:
                     # We ignore this, since the declaration edge is not part of
                     # the actual dependency graph
@@ -55,16 +54,20 @@ class DependencyAnalyzer:
         # Check if any of the explicit dependencies is redundant
         explicit_dependencies.sort(key = self._dependency_to_key)
         redundant_dependencies: list[tuple[ExplicitDependency, list[Dependency]]] = list()
+        possibly_redundant_dependencies: list[tuple[ExplicitDependency, list[Dependency]]] = list()
 
         for dependency in explicit_dependencies:
             path = self.graph.path(dependency.dependee.id, dependency.depended.id)
             if path is not None:
-                path = [self.id_to_dependency[id] for id in path]
-                redundant_dependencies.append((dependency, path))
-            
-            self.graph.edge(dependency.id, dependency.dependee.id, dependency.depended.id)
+                used_avoids = path[1]
+                path = [self.id_to_dependency[id] for id in path[0]]
 
-        return redundant_dependencies
+                if not used_avoids:
+                    redundant_dependencies.append((dependency, path))
+                else:
+                    possibly_redundant_dependencies.append((dependency, path))
+
+        return redundant_dependencies, possibly_redundant_dependencies
 
     def _dependency_to_key(self, dependency: ExplicitDependency):
         """

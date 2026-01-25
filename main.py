@@ -14,8 +14,8 @@ nodes, dependencies = parser.parse(arguments.directory)
 
 analyzer = DependencyAnalyzer(nodes, dependencies)
 if arguments.graph: analyzer.export(arguments.graph)
-redundant = analyzer.redundant()
+redundant, possibly_redundant = analyzer.redundant()
 
-report = Report(nodes, dependencies, redundant)
+report = Report(nodes, dependencies, redundant, possibly_redundant)
 if arguments.sarif: print(report.sarif(), end='')
 else: print(report.human_readable(), end='')

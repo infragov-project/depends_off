@@ -7,6 +7,7 @@ class Graph:
         self.nodes: set[int] = set()
         # edges matches a node to a list of its outgoing edges
         self.edges: dict[int, list[tuple[int, int]]] = dict()
+        self.avoid_edges: dict[int, list[tuple[int, int]]] = dict()
 
     def node(self, node: int):
         """
@@ -14,18 +15,21 @@ class Graph:
         """
         self.nodes.add(node)
         self.edges[node] = list()
+        self.avoid_edges[node] = list()
     
-    def edge(self, id: int, u: int, v: int):
+    def edge(self, id: int, u: int, v: int, avoid: bool):
         """
-        Add an edge from u to v
+        Add an edge from u to v, which might be an edge to avoid in BFS.
         """
-        self.edges[u].append((id, v))
+        if not avoid: self.edges[u].append((id, v))
+        else: self.avoid_edges[u].append((id, v))
     
     def remove_edge(self, id: int, u: int):
         """
         Remove the edge from u to v
         """
         self.edges[u] = [edge for edge in self.edges[u] if edge[0] != id]
+        self.avoid_edges[u] = [edge for edge in self.avoid_edges[u] if edge[0] != id]
     
     def path(self, u: int, v: int):
         """
@@ -33,18 +37,29 @@ class Graph:
         """
         return self._dfs(u, v, set())
 
-    def _dfs(self, u: int, v: int, visited: set[int]) -> list[int] | None:
+    def _dfs(self, u: int, v: int, visited: set[int]) -> tuple[list[int], bool] | None:
         """
         Depth-first search to find a path from u to v and return path edges.
         """
-        if u == v: return []
+        if u == v: return ([], False)
 
         visited.add(u)
+
         for edge in self.edges[u]:
             if edge[1] not in visited:
-                path = self._dfs(edge[1], v, visited)
-                if path is not None:
-                    return [edge[0]] + path
+                subresult = self._dfs(edge[1], v, visited)
+                if subresult is not None:
+                    path, used_avoids = subresult
+                    return ([edge[0]] + path, used_avoids)
+                
+        # Edges to avoid are only used if all other edges fail
+        for edge in self.avoid_edges[u]:
+            if edge[1] not in visited:
+                subresult = self._dfs(edge[1], v, visited)
+                if subresult is not None:
+                    path, used_avoids = subresult
+                    return ([edge[0]] + path, True)
+                
         return None
     
 class DAG(Graph):
@@ -52,14 +67,14 @@ class DAG(Graph):
     Simple directed acyclic graph
     """
 
-    def edge(self, id: int, u: int, v: int):
+    def edge(self, id: int, u: int, v: int, avoid: bool):
         """
         Add an edge from u to v. If the edge creates a cycle, a CycleError is
         raised.
         """
         if self.path(v, u):
             raise CycleError()
-        super().edge(id, u, v)
+        super().edge(id, u, v, avoid)
 
     def toposort(self):
         """
