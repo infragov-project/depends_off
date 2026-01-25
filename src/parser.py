@@ -22,9 +22,10 @@ class Parser:
         self.node_map: dict[str, Node] = dict()
 
         # A list of dependencies to consider in the second pass. Contains tuples
-        # of the form (dependent, is explicit, dependency declaration range,
-        # dependency string, module where the dependency was declared)
-        self.potential_dependencies: list[tuple[Node, bool, Range, str, Module]] = list()
+        # of the form (dependent, node where dependency is declared, is
+        # explicit, dependency declaration range, dependency string, module
+        # where the dependency was declared)
+        self.potential_dependencies: list[tuple[Node, Node, bool, Range, str, Module]] = list()
 
         # First pass
         self._parse_module_nodes('root', path)
@@ -55,11 +56,11 @@ class Parser:
 
         # All nodes depend on the start of the module's expand node
         for node in module.nodes:
-            self.dependencies.append(Dependency(node, module.expand))
+            self.dependencies.append(Dependency(node, module.expand, node))
             
         # The module's close node depends on all nodes
         for node in module.nodes:
-            self.dependencies.append(Dependency(module.close, node))
+            self.dependencies.append(Dependency(module.close, node, module.close))
 
         return module
     
@@ -99,7 +100,7 @@ class Parser:
         """
         Resolve all potential dependencies in the dependency graph.
         """
-        for dependent, explicit, range, string, module in self.potential_dependencies:
+        for dependent, declaration, explicit, range, string, module in self.potential_dependencies:
             dependee = self._find_node(module, string)
             
             if dependee is None: continue
@@ -108,12 +109,14 @@ class Parser:
             if explicit: self.dependencies.append(ExplicitDependency(
                 dependent,
                 dependee,
+                declaration,
                 range
             ))
 
             else: self.dependencies.append(Dependency(
                 dependent,
                 dependee,
+                declaration,
                 range
             ))
 
@@ -128,10 +131,18 @@ class Parser:
         submodule = self._parse_module_nodes(f'{module.name}.{name['name']}', path)
         module.submodules.append(submodule)
         
-        self.dependencies.append(Dependency(module.close, submodule.close))
-        self.dependencies.append(Dependency(submodule.expand, module.expand))
+        self.dependencies.append(Dependency(module.close, submodule.close, module.close))
+        self.dependencies.append(Dependency(submodule.expand, module.expand, submodule.expand))
 
-        self._dependencies(module, filename, data, submodule.expand)
+        for key, value in data.items():
+            variable = self._find_var(submodule, f'var.{key}')
+
+            # Parse potential dependencies in module variables
+            if variable is not None:
+                self._dependencies(module, filename, value, variable)
+    
+            else:
+                self._dependencies(module, filename, value, submodule.expand, key == 'depends_on')
     
     def _provider(self, module: Module, filename: str, data: Any):
         """
@@ -275,11 +286,11 @@ class Parser:
                 metadata['__end_column__']
             )
             for match in re.finditer(r'\${(.+?)}', data):   
-                self.potential_dependencies.append((origin, explicit, range, match[1], module))
+                self.potential_dependencies.append((origin, origin, explicit, range, match[1], module))
             else:
                 # In explicit dependencies, the whole string may be a dependency
                 if explicit:
-                    self.potential_dependencies.append((origin, explicit, range, data, module))
+                    self.potential_dependencies.append((origin, origin, explicit, range, data, module))
 
         # Recursively parse lists
         elif type(data) == list:
