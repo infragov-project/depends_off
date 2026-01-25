@@ -26,6 +26,14 @@ class DependencyAnalyzer:
                 f'the dependency graph has a cycle: cycle detected while adding {dependency}'
             )
 
+            if dependency.dependee != dependency.declaration:
+                print(dependency)
+                try: self.graph.edge(dependency.id, dependency.declaration.id, dependency.depended.id)
+                except CycleError:
+                    # We ignore this, since the declaration edge is not part of
+                    # the actual dependency graph
+                    pass
+
     def redundant(self):
         """
         Retrieve the redundant explicit dependencies in the graph.

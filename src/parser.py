@@ -139,10 +139,10 @@ class Parser:
 
             # Parse potential dependencies in module variables
             if variable is not None:
-                self._dependencies(module, filename, value, variable)
+                self._dependencies(module, filename, value, variable, submodule.expand)
     
             else:
-                self._dependencies(module, filename, value, submodule.expand, key == 'depends_on')
+                self._dependencies(module, filename, value, submodule.expand, submodule.expand, key == 'depends_on')
     
     def _provider(self, module: Module, filename: str, data: Any):
         """
@@ -166,7 +166,7 @@ class Parser:
         self.nodes.append(provider)
         self.node_map[f'{module.name}.provider.{provider.name}'] = provider
 
-        self._dependencies(module, filename, data, provider)
+        self._dependencies(module, filename, data, provider, provider)
 
     def _variable(self, module: Module, filename: str, data: Any):
         """
@@ -206,7 +206,7 @@ class Parser:
         self.nodes.append(output)
         self.node_map[f'{module.name}.{output.name}'] = output
 
-        self._dependencies(module, filename, data, output)
+        self._dependencies(module, filename, data, output, output)
 
     def _data(self, module: Module, filename: str, data: Any):
         """
@@ -225,7 +225,7 @@ class Parser:
         self.nodes.append(node)
         self.node_map[f'{module.name}.{node.name}'] = node
         
-        self._dependencies(module, filename, data, node)
+        self._dependencies(module, filename, data, node, node)
 
     def _locals(self, module: Module, filename: str, data: Any):
         """
@@ -246,7 +246,7 @@ class Parser:
             self.nodes.append(local)
             self.node_map[f'{module.name}.{local.name}'] = local
 
-            self._dependencies(module, filename, metadata, local)
+            self._dependencies(module, filename, metadata, local, local)
     
     def _resource(self, module: Module, filename: str, data: Any):
         """
@@ -265,9 +265,9 @@ class Parser:
         self.nodes.append(resource)
         self.node_map[f'{module.name}.resource.{resource.name}'] = resource
 
-        self._dependencies(module, filename, data, resource)
+        self._dependencies(module, filename, data, resource, resource)
 
-    def _dependencies(self, module: Module, filename: str, data: Any, origin: Node, explicit: bool = False, metadata: Any = {}):
+    def _dependencies(self, module: Module, filename: str, data: Any, dependee: Node, declaration: Node, explicit: bool = False, metadata: Any = {}):
         """
         Recursively parse potential dependencies in a Terraform block's data.
         """
@@ -286,23 +286,22 @@ class Parser:
                 metadata['__end_column__']
             )
             for match in re.finditer(r'\${(.+?)}', data):   
-                self.potential_dependencies.append((origin, origin, explicit, range, match[1], module))
+                self.potential_dependencies.append((dependee, declaration, explicit, range, match[1], module))
             else:
                 # In explicit dependencies, the whole string may be a dependency
                 if explicit:
-                    self.potential_dependencies.append((origin, origin, explicit, range, data, module))
-
+                    self.potential_dependencies.append((dependee, declaration, explicit, range, data, module))
         # Recursively parse lists
         elif type(data) == list:
             for value in data: # type: ignore
-                self._dependencies(module, filename, value, origin, explicit, metadata)
+                self._dependencies(module, filename, value, dependee, declaration, explicit, metadata)
 
         # Recursively parse dictionaries
         elif type(data) == dict:
             for attribute, metadata in data.items():
                 # Ignore line/column metadata
                 if attribute.startswith('__'): continue
-                self._dependencies(module, filename, metadata, origin, explicit or attribute == 'depends_on', data)
+                self._dependencies(module, filename, metadata, dependee, declaration, explicit or attribute == 'depends_on', data)
         
         else:
             raise ParserError(f'Unsupported data type: {type(data)}')
