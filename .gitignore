@@ -3,7 +3,6 @@ main.go
 test.tf
 __pycache__
 tmp.py
-examples
 graph.dot
 graph.png
 output.txt

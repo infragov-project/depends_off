@@ -1,6 +1,6 @@
 # depends_off
 
-A tool that detects redundant Terraform dependencies.
+A tool that detects redundant Terraform dependencies. Refer to [the last section](#on-redundant-dependencies) for an explanation on why redundant dependencies should be avoided.
 
 ## Installation
 
@@ -18,6 +18,21 @@ To parse the dependency graph of a given module and detect redundancies, provide
 
 ```
 $ python3 main.py [directory] [--graph path.dot] [--sarif]
+```
+
+## Examples
+
+Several example Terraform modules demonstrating redundant dependencies can be found in the `examples` directory.
+
+- `examples/1`: One of the simplest redundant `depends_on` usages.
+- `examples/2`: Demonstrates the ability of the tool to detect redundant `depends_on` across a chain of implicit dependencies.
+- `examples/3`: Multiple cases of redundant `depends_on` declarations in various parts of a dependency chain. It is also a good opportunity to use the tool's graph export to visualize the dependencies.
+- `examples/4`: This example demonstrates redundant `depends_on` usage accross modules.
+
+You can run the tool against any of them:
+
+```
+$ python3 main.py examples/1 [--graph graph.dot] [--sarif]
 ```
 
 ## On redundant dependencies
