@@ -51,6 +51,9 @@ class DependencyAnalyzer:
         for dependency in explicit_dependencies:
             self.graph.remove_edge(dependency.id, dependency.dependee.id)
 
+        for node in self.nodes:
+            print(node.id, node)
+
         # Check if any of the explicit dependencies is redundant
         explicit_dependencies.sort(key = self._dependency_to_key)
         redundant_dependencies: list[tuple[ExplicitDependency, list[Dependency]]] = list()
