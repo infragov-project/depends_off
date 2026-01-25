@@ -4,7 +4,7 @@ A tool that detects redundant Terraform dependencies.
 
 ## Usage
 
-To parse the dependency graph of a given module and detect redundancies, provide the tool with the path to the directory containing the module (or leave empty for the current directory). There is also an option to output the inferred dependency graph in DOT format and another for SARIF output.
+To parse the dependency graph of a given module and detect redundancies, provide the tool with the path to the directory containing the module (or leave empty for the current directory). There is also an option to output the inferred dependency graph in DOT and an option for SARIF output:
 
 ```
 $ python3 main.py [directory] [--graph path.dot] [--sarif]
@@ -12,7 +12,7 @@ $ python3 main.py [directory] [--graph path.dot] [--sarif]
 
 ## On redundant dependencies
 
-Redundant Terraform dependencies are explicit dependencies (declared with `depends_on`) that can be inferred using only [expression references](https://developer.hashicorp.com/terraform/language/expressions/references). The [Terraform documentation](https://developer.hashicorp.com/terraform/language/meta-arguments/depends_on#processing-and-planning-consequences) and several other sources advise against using `depends_on` when the dependency can be inferred by Terraform:
+Redundant Terraform dependencies are explicit dependencies (declared with `depends_on`) that can be inferred using only [expression references](https://developer.hashicorp.com/terraform/language/expressions/references). The [Terraform documentation](https://developer.hashicorp.com/terraform/language/meta-arguments/depends_on#processing-and-planning-consequences) and several other sources advise against this:
 
 > You should only use depends_on as a last resort because it can cause Terraform to create more conservative plans that replace more resources than necessary. For example, Terraform may treat more values as unknown "(known after apply)" because it is uncertain what changes will occur on the upstream object. This is especially likely when you use `depends_on` for modules.
 > 
