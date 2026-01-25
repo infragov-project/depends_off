@@ -9,11 +9,12 @@ OUTPUT = Path('output.txt')
 parsed = 0
 analyzed = 0
 redundant_count = 0
+potentially_redundant_count = 0
 failed = 0
 parser = Parser()
 
 def process_directory(directory: Path, out: TextIO):
-    global parsed, analyzed, redundant_count, failed
+    global parsed, analyzed, redundant_count, potentially_redundant_count, failed
 
     if not directory.is_dir(): return
     if not has_tf_files(directory):
@@ -25,15 +26,15 @@ def process_directory(directory: Path, out: TextIO):
     try:
         resources, dependencies = parser.parse(str(directory))
         parsed += 1
-    except Exception as e:
+    except Exception:
         out.write(f'Error parsing {directory}.\n')
         failed += 1
-        print_progress(parsed, analyzed, redundant_count, failed)
+        print_progress()
         return
 
     try:
         analyzer = DependencyAnalyzer(resources, dependencies)
-        redundant = analyzer.redundant()
+        redundant, potentially_redundant = analyzer.redundant()
         analyzed += 1
         redundant_count += len(redundant)
 
@@ -43,14 +44,22 @@ def process_directory(directory: Path, out: TextIO):
                 out.write(f'\t{dependency} via' + '\n')
                 out.write('\t\t' + '\n\t\t'.join(str(dependency) for dependency in path) + '\n')
 
-    except Exception as e:
+        if potentially_redundant:
+            out.write(f'Found {len(potentially_redundant)} possibly redundant dependencies in {directory}:\n')
+            for dependency, path in potentially_redundant:
+                out.write(f'\t{dependency} via' + '\n')
+                out.write('\t\t' + '\n\t\t'.join(str(dependency) for dependency in path) + '\n')        
+            potentially_redundant_count += len(potentially_redundant)
+
+    except Exception:
         out.write(f'Error analyzing {directory}.\n')
         failed += 1
 
-    print_progress(parsed, analyzed, redundant_count, failed)
+    print_progress()
 
-def print_progress(parsed, analyzed, redundant, failed):
-    print(f'\rParsed: {parsed}\tAnalyzed: {analyzed}\tFailed: {failed}\tRedundant dependencies: {redundant}', end='')
+def print_progress():
+    global parsed, analyzed, redundant_count, potentially_redundant_count, failed
+    print(f'\rParsed: {parsed}\tAnalyzed: {analyzed}\tFailed: {failed}\tRedundant dependencies: {redundant_count}\tPossibly redundant: {potentially_redundant_count}', end='')
 
 def has_tf_files(directory: Path) -> bool:
     return any(p.suffix == '.tf' for p in directory.iterdir() if p.is_file())
