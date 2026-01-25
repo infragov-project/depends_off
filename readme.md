@@ -1,4 +1,4 @@
-# Terraform 3D - Duplicate Dependency Detector
+# depends_off
 
 A tool that detects redundant Terraform dependencies.
 

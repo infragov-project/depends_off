@@ -44,9 +44,9 @@ class Report:
             'runs': [{
                 'tool': {
                     'driver': {
-                        'name': 'terraform-3d',
+                        'name': 'depends_off',
                         'version': '1.0.0',
-                        'informationUri': 'https://github.com/bogosorter/terraform-3d'
+                        'informationUri': 'https://github.com/infragov-project/depends_off'
                     }
                 },
                 'results': [
