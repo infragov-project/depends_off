@@ -58,15 +58,15 @@ class Report:
                         'informationUri': 'https://github.com/infragov-project/depends_off'
                     }
                 },
-                'results': [
-                    self._sarif_result(dependency, path) for dependency, path in self.redundant_dependencies
-                ]
+                'results':
+                    [self._sarif_redundant(dependency, path) for dependency, path in self.redundant_dependencies]
+                    + [self._sarif_possibly_redundant(dependency, path) for dependency, path in self.possibly_redundant_dependencies]
             }]
         }
 
         return json.dumps(report, indent=4) + '\n'
     
-    def _sarif_result(self, dependency: ExplicitDependency, path: list[Dependency]):
+    def _sarif_redundant(self, dependency: ExplicitDependency, path: list[Dependency]):
         """
         Generate a SARIF result for a redundant dependency.
         """
@@ -75,7 +75,35 @@ class Report:
             'ruleId': 'no-redundant-dependencies',
             'level': 'warning',
             'message': {
-                'text': f'Redundant dependency found: {dependency} via\n\t' + '\n\t'.join(str(dependency) for dependency in path)
+                'text': f'Redundant dependency found: {dependency}. There is a dependency chain that implies this dependency, via\n\t' + '\n\t'.join(str(dependency) for dependency in path)
+            },
+            'locations': [{
+                'physicalLocation': {
+                    'artifactLocation': {
+                        'uri': dependency.range.filename
+                    },
+                    'region': {
+                        'startLine': dependency.range.start_line,
+                        'startColumn': dependency.range.start_column,
+                        'endLine': dependency.range.end_line,
+                        'endColumn': dependency.range.end_column
+                    }
+                }
+            }]
+        }
+
+        return result
+    
+    def _sarif_possibly_redundant(self, dependency: ExplicitDependency, path: list[Dependency]):
+        """
+        Generate a SARIF result for a possibly redundant dependency.
+        """
+
+        result = {
+            'ruleId': 'possibly-redundant-dependencies',
+            'level': 'note',
+            'message': {
+                'text': f'Possibly redundant dependency found: {dependency}. There is a dependency chain that could imply this dependency, via\n\t' + '\n\t'.join(str(dependency) for dependency in path)
             },
             'locations': [{
                 'physicalLocation': {
