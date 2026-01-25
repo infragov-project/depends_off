@@ -19,7 +19,7 @@ class Graph:
     
     def edge(self, id: int, u: int, v: int, avoid: bool):
         """
-        Add an edge from u to v, which might be an edge to avoid in BFS.
+        Add an edge from u to v, which might be an edge to avoid in DFS.
         """
         if not avoid: self.edges[u].append((id, v))
         else: self.avoid_edges[u].append((id, v))
