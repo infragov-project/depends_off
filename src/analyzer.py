@@ -26,6 +26,7 @@ class DependencyAnalyzer:
                 f'the dependency graph has a cycle: cycle detected while adding {dependency}'
             )
 
+        for dependency in self.dependencies:
             if dependency.dependee != dependency.declaration:
                 try: self.graph.edge(dependency.id, dependency.declaration.id, dependency.depended.id, True)
                 except CycleError:
