@@ -2,7 +2,7 @@ from pathlib import Path
 import re
 import hcl2
 from typing import Any
-from src.terraform_graph import Node, Provider, Variable, Output, Data, Local, Resource, Dependency, ExplicitDependency, Range, Module
+from src.terraform_graph import Node, Provider, Variable, Output, Data, Local, Resource, Dependency, ImplicitDependency, ExplicitDependency, Range, Module
 
 class Parser:
     def parse(self, path: str):
@@ -56,11 +56,11 @@ class Parser:
 
         # All nodes depend on the start of the module's expand node
         for node in module.nodes:
-            self.dependencies.append(Dependency(node, module.expand, node))
+            self.dependencies.append(ImplicitDependency(node, module.expand))
             
         # The module's close node depends on all nodes
         for node in module.nodes:
-            self.dependencies.append(Dependency(module.close, node, module.close))
+            self.dependencies.append(ImplicitDependency(module.close, node))
 
         return module
     
@@ -109,15 +109,14 @@ class Parser:
             if explicit: self.dependencies.append(ExplicitDependency(
                 dependent,
                 dependee,
-                declaration,
                 range
             ))
 
-            else: self.dependencies.append(Dependency(
+            else: self.dependencies.append(ImplicitDependency(
                 dependent,
                 dependee,
-                declaration,
-                range
+                range,
+                declaration
             ))
 
     def _module_block(self, module: Module, filename: str, data: Any):
@@ -131,8 +130,8 @@ class Parser:
         submodule = self._parse_module_nodes(f'{module.name}.{name['name']}', path)
         module.submodules.append(submodule)
         
-        self.dependencies.append(Dependency(module.close, submodule.close, module.close))
-        self.dependencies.append(Dependency(submodule.expand, module.expand, submodule.expand))
+        self.dependencies.append(ImplicitDependency(module.close, submodule.close))
+        self.dependencies.append(ImplicitDependency(submodule.expand, module.expand))
 
         for key, value in data.items():
             variable = self._find_var(submodule, f'var.{key}')
