@@ -63,7 +63,7 @@ class Parser:
             self.dependencies.append(ImplicitDependency(module.close, node))
 
         # The module's close node depends on the module's expand node
-        self.dependencies.append(Dependency(module.close, module.expand, module.close))
+        self.dependencies.append(ImplicitDependency(module.close, module.expand))
 
         return module
     
