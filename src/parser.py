@@ -310,7 +310,7 @@ class Parser:
         """
         Find a node in the dependency graph based on a dependency string.
         """
-        return self._find_var(module, string) or self._find_module_output(module, string) or self._find_data(module, string) or self._find_local(module, string) or self._find_provider(module, string) or self._find_resource(module, string)
+        return self._find_var(module, string) or self._find_module_output(module, string) or self._find_module(module, string) or self._find_data(module, string) or self._find_local(module, string) or self._find_provider(module, string) or self._find_resource(module, string)
     
     def _find_provider(self, module: Module, string: str) -> Node | None:
         """
@@ -348,6 +348,18 @@ class Parser:
         o = next((o for o in m.outputs if o.name == output_name), None)
 
         return o
+    
+    def _find_module(self, module: Module, string: str) -> Node | None:
+        """
+        Find a submodule based on a dependency string.
+        """
+        split = string.split('.')
+        if split[0] != 'module' or len(split) != 2: return None
+
+        name = f'{module.name}.{split[1]}'
+        submodule = next((m for m in module.submodules if m.name == name), None)
+
+        if submodule is not None: return submodule.close
     
     def _find_data(self, module: Module, string: str) -> Node | None:
         """
