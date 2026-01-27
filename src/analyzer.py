@@ -1,4 +1,4 @@
-from src.terraform_graph import Node, Dependency, ExplicitDependency
+from src.terraform_graph import Node, Dependency, ImplicitDependency, ExplicitDependency
 from src.graph import DAG, CycleError
 
 class DependencyAnalyzer:
@@ -26,7 +26,8 @@ class DependencyAnalyzer:
                 f'the dependency graph has a cycle: cycle detected while adding {dependency}'
             )
 
-            if dependency.dependee != dependency.declaration:
+        for dependency in self.dependencies:
+            if type(dependency) is ImplicitDependency and dependency.dependee != dependency.declaration:
                 try: self.graph.edge(dependency.id, dependency.declaration.id, dependency.depended.id, True)
                 except CycleError:
                     # We ignore this, since the declaration edge is not part of

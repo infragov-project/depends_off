@@ -104,22 +104,30 @@ class Dependency:
 
     _id_counter = 0
 
-    def __init__(self, dependee: Node, depended: Node, declaration: Node, range: Range | None = None):
+    def __init__(self, dependee: Node, depended: Node, range: Range | None = None):
         self.id = Dependency._id_counter
         Dependency._id_counter += 1
         
         self.dependee = dependee
         self.depended = depended
-        self.declaration = declaration
         self.range = range
     
     def __str__(self):
         return f'{self.dependee} -> {self.depended}'
+
+class ImplicitDependency(Dependency):
+    """
+    Represents an implicit dependency between two nodes in the dependency graph.
+    """
+    def __init__(self, dependee: Node, depended: Node, range: Range | None = None, declaration: Node | None = None):
+        super().__init__(dependee, depended, range)
+        if declaration is None: self.declaration = dependee
+        else: self.declaration = declaration
     
 class ExplicitDependency(Dependency):
     """
     Represents an explicit dependency between two nodes in the dependency graph.
     """
-    def __init__(self, dependee: Node, depended: Node, declaration: Node, range: Range):
-        super().__init__(dependee, depended, declaration, range)
+    def __init__(self, dependee: Node, depended: Node, range: Range):
+        super().__init__(dependee, depended, range)
         self.range = range
