@@ -294,12 +294,16 @@ class Parser:
                 metadata['__end_line__'],
                 metadata['__end_column__']
             )
-            for match in re.finditer(r'\${(.+?)}', data):   
+
+            matches = list(re.finditer(r'\${(.+?)}', data))
+
+            for match in matches:
                 self.potential_dependencies.append((dependee, declaration, explicit, range, match[1], module))
-            else:
+            
+            if len(matches) == 0 and explicit:
                 # In explicit dependencies, the whole string may be a dependency
-                if explicit:
-                    self.potential_dependencies.append((dependee, declaration, explicit, range, data, module))
+                self.potential_dependencies.append((dependee, declaration, explicit, range, data, module))
+                
         # Recursively parse lists
         elif type(data) == list:
             for value in data: # type: ignore
