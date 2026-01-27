@@ -254,17 +254,24 @@ class Parser:
         """
         resource, data = self._extract(data, 'type', 'name')
 
-        resource = Resource(module, resource['type'], resource['name'], Range(
+        components = resource['type'].split('_')
+        if len(components) < 2: return
+        provider = components[0]
+
+        range = Range(
             filename,
             data['__start_line__'],
             data['__start_column__'],
             data['__end_line__'],
             data['__end_column__']
-        ))
+        )
+
+        resource = Resource(module, resource['type'], resource['name'], range)
         module.nodes.append(resource)
         self.nodes.append(resource)
         self.node_map[resource.name] = resource
 
+        self.potential_dependencies.append((resource, resource, False, range, f'provider.{provider}', module))
         self._dependencies(module, filename, data, resource, resource)
 
     def _dependencies(self, module: Module, filename: str, data: Any, dependee: Node, declaration: Node, explicit: bool = False, metadata: Any = {}):
@@ -316,6 +323,10 @@ class Parser:
         """
         Find a provider node based on a dependency string.
         """
+        if string.startswith('provider.'):
+            provider = string[9:]
+            return self.node_map.get(f'{module.name}.provider.{provider}')
+
         match = re.match(r'(.+?)\.(.+?)(\..+)?$', string)
         if not match: return None
 
