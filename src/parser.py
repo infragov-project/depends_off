@@ -62,6 +62,9 @@ class Parser:
         for node in module.nodes:
             self.dependencies.append(Dependency(module.close, node, module.close))
 
+        # The module's close node depends on the module's expand node
+        self.dependencies.append(Dependency(module.close, module.expand, module.close))
+
         return module
     
     def _parse_file_nodes(self, module: Module, filename: str):
