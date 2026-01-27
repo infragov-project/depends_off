@@ -155,7 +155,7 @@ class Parser:
         else :
             alias = None
 
-        provider = Provider(provider['name'], alias, Range(
+        provider = Provider(module, provider['name'], alias, Range(
             filename,
             data['__start_line__'],
             data['__start_column__'],
@@ -164,7 +164,7 @@ class Parser:
         ))
         module.nodes.append(provider)
         self.nodes.append(provider)
-        self.node_map[f'{module.name}.provider.{provider.name}'] = provider
+        self.node_map[provider.name] = provider
 
         self._dependencies(module, filename, data, provider, provider)
 
@@ -174,7 +174,7 @@ class Parser:
         """
         variable, data = self._extract(data, 'name')
 
-        variable = Variable(variable['name'], Range(
+        variable = Variable(module, variable['name'], Range(
             filename,
             data['__start_line__'],
             data['__start_column__'],
@@ -184,7 +184,7 @@ class Parser:
         module.nodes.append(variable)
         module.variables.append(variable)
         self.nodes.append(variable)
-        self.node_map[f'{module.name}.{variable.name}'] = variable
+        self.node_map[variable.name] = variable
         
         module.variables.append(variable)
 
@@ -194,7 +194,7 @@ class Parser:
         """
         output, data = self._extract(data, 'name')
 
-        output = Output(output['name'], Range(
+        output = Output(module, output['name'], Range(
             filename,
             data['__start_line__'],
             data['__start_column__'],
@@ -204,7 +204,7 @@ class Parser:
         module.nodes.append(output)
         module.outputs.append(output)
         self.nodes.append(output)
-        self.node_map[f'{module.name}.{output.name}'] = output
+        self.node_map[output.name] = output
 
         self._dependencies(module, filename, data, output, output)
 
@@ -214,7 +214,7 @@ class Parser:
         """
         block, data = self._extract(data, 'type', 'name')
 
-        node = Data(block['type'], block['name'], Range(
+        node = Data(module, block['type'], block['name'], Range(
             filename,
             data['__start_line__'],
             data['__start_column__'],
@@ -223,7 +223,7 @@ class Parser:
         ))
         module.nodes.append(node)
         self.nodes.append(node)
-        self.node_map[f'{module.name}.{node.name}'] = node
+        self.node_map[node.name] = node
         
         self._dependencies(module, filename, data, node, node)
 
@@ -234,7 +234,7 @@ class Parser:
         for name, metadata in data.items():
             if name.startswith('__'): continue
 
-            local = Local(name, Range(
+            local = Local(module, name, Range(
                 filename,
                 metadata['__start_line__'],
                 metadata['__start_column__'],
@@ -244,7 +244,7 @@ class Parser:
 
             module.nodes.append(local)
             self.nodes.append(local)
-            self.node_map[f'{module.name}.{local.name}'] = local
+            self.node_map[local.name] = local
 
             self._dependencies(module, filename, metadata, local, local)
     
@@ -254,7 +254,7 @@ class Parser:
         """
         resource, data = self._extract(data, 'type', 'name')
 
-        resource = Resource(resource['type'], resource['name'], Range(
+        resource = Resource(module, resource['type'], resource['name'], Range(
             filename,
             data['__start_line__'],
             data['__start_column__'],
@@ -263,7 +263,7 @@ class Parser:
         ))
         module.nodes.append(resource)
         self.nodes.append(resource)
-        self.node_map[f'{module.name}.resource.{resource.name}'] = resource
+        self.node_map[resource.name] = resource
 
         self._dependencies(module, filename, data, resource, resource)
 
