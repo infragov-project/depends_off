@@ -90,7 +90,7 @@ resource "aws_instance" "server" {
 
 This can be visualized in `depends_off`'s output graph (image below). The true dependency is from `var.subnet_id` to `output.subnet_id`, but the extra `depends_on` makes the whole `app` module dependent on the output variable. If there were more items in the `app` module, they would be unnecessarily dependent on the variable, which could slow down deployment:
 
-![Terraform plan without the redundant dependency](./docs/graph.png)
+![`depends_off` detected graph](./docs/graph.png)
 
 _Figure 1: Dependency graph as detected by `depends_off`. The `module.app` expand depends on the output variable, and any resources that are not dependent on the subnet id would be unnecessarily delayed during deployment._
 
