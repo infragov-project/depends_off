@@ -1,3 +1,17 @@
+"""
+A tool that detects redundant Terraform dependencies.
+
+To parse the dependency graph of a given module and detect redundancies, provide
+the tool with the path to the directory containing the module (or leave empty
+for the current directory). The `--graph` command can be used to to output the
+inferred dependency graph in DOT format, and the `--sarif` flag generate SARIF
+output.
+
+```
+$ python3 main.py [directory] [--graph path.dot] [--sarif]
+```
+"""
+
 import argparse
 from src.parser import Parser
 from src.analyzer import DependencyAnalyzer
