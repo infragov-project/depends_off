@@ -3,8 +3,8 @@ main.go
 test.tf
 __pycache__
 tmp.py
-graph.dot
-graph.png
+output.png
+output.dot
 output.txt
-example.sarif
+output.sarif
 dataset
