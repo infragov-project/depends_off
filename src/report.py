@@ -23,22 +23,20 @@ class Report:
         """
 
         result = str()
-        result += f'Total nodes: {len(self.nodes)}\n'
-        result += f'Total dependencies: {len(self.dependencies)}\n'
 
-        if (len(self.redundant_dependencies) == 0): result += 'No redundant dependencies found.\n'
-        else:
+        if len(self.redundant_dependencies) + len(self.possibly_redundant_dependencies) == 0: result += 'No redundant dependencies found.\n'
+        
+        if len(self.redundant_dependencies) > 0:
             result += 'Redundant dependencies:\n'
             for dependency, path in self.redundant_dependencies:
-                result += f'\t{dependency} at {dependency.range} \n\tvia\t'
-                result += '\n\t\t'.join(str(dependency) for dependency in path) + '\n'
+                result += f'\t{dependency.str_with_range()} \n\tvia\t'
+                result += '\n\t\t'.join(str(dependency.str_with_range()) for dependency in path) + '\n'
 
-        if (len(self.possibly_redundant_dependencies) == 0): result += 'No possibly redundant dependencies found.\n'
-        else:
+        if len(self.possibly_redundant_dependencies) > 0:
             result += 'Possibly redundant dependencies:\n'
             for dependency, path in self.possibly_redundant_dependencies:
-                result += f'\t{dependency} at {dependency.range}\n\tvia\t'
-                result += '\n\t\t'.join(str(dependency) for dependency in path) + '\n'
+                result += f'\t{dependency.str_with_range()}\n\tvia\t'
+                result += '\n\t\t'.join(str(dependency.str_with_range()) for dependency in path) + '\n'
 
         return result
     
@@ -75,7 +73,7 @@ class Report:
             'ruleId': 'no-redundant-dependencies',
             'level': 'warning',
             'message': {
-                'text': f'Redundant dependency found: {dependency}. There is a dependency chain that implies this dependency, via\n\t' + '\n\t'.join(str(dependency) for dependency in path)
+                'text': f'Redundant dependency found: {dependency}. There is a dependency chain that implies this dependency, via\n\t' + '\n\t'.join(str(dependency.str_with_range()) for dependency in path)
             },
             'locations': [{
                 'physicalLocation': {
@@ -103,7 +101,7 @@ class Report:
             'ruleId': 'possibly-redundant-dependencies',
             'level': 'note',
             'message': {
-                'text': f'Possibly redundant dependency found: {dependency}. There is a dependency chain that could imply this dependency, via\n\t' + '\n\t'.join(str(dependency) for dependency in path)
+                'text': f'Possibly redundant dependency found: {dependency}. There is a dependency chain that could imply this dependency, via\n\t' + '\n\t'.join(str(dependency.str_with_range()) for dependency in path)
             },
             'locations': [{
                 'physicalLocation': {
