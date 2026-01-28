@@ -12,10 +12,9 @@ class Parser:
         """
 
         # Parsing is divided into two passes. In the first pass, all the nodes
-        # in the dependency graph are parse. Potential dependencies are also
-        # listed, but not resolved, since the dependee node might not have been
-        # parsed yet. In the second pass, all the potential dependencies are
-        # resolved.
+        # in the dependency graph are parsed. Dependencies are also identified,
+        # but not resolved, since the depended node might not have been parsed
+        # yet. In the second pass, all the future dependencies are resolved.
 
         self.nodes: list[Node] = list()
         self.dependencies: list[Dependency] = list()
@@ -25,7 +24,7 @@ class Parser:
         # of the form (dependent, node where dependency is declared, is
         # explicit, dependency declaration range, dependency string, module
         # where the dependency was declared)
-        self.potential_dependencies: list[tuple[Node, Node, bool, Range, str, Module]] = list()
+        self.future_dependencies: list[tuple[Node, Node, bool, Range, str, Module]] = list()
 
         # First pass
         self._parse_module_nodes('root', path)
@@ -54,16 +53,16 @@ class Parser:
                 
                 self._parse_file_nodes(module, str(p))
 
-        # All nodes depend on the start of the module's expand node
+        # The module's close node depends on the module's expand node
+        self.dependencies.append(ImplicitDependency(module.close, module.expand))
+
+        # All nodes of the module depend on the module's expand node
         for node in module.nodes:
             self.dependencies.append(ImplicitDependency(node, module.expand))
             
-        # The module's close node depends on all nodes
+        # The module's close node depends on all nodes in the module
         for node in module.nodes:
             self.dependencies.append(ImplicitDependency(module.close, node))
-
-        # The module's close node depends on the module's expand node
-        self.dependencies.append(ImplicitDependency(module.close, module.expand))
 
         return module
     
@@ -101,9 +100,9 @@ class Parser:
     
     def _parse_dependencies(self):
         """
-        Resolve all potential dependencies in the dependency graph.
+        Resolve all future dependencies in the dependency graph.
         """
-        for dependent, declaration, explicit, range, string, module in self.potential_dependencies:
+        for dependent, declaration, explicit, range, string, module in self.future_dependencies:
             dependee = self._find_node(module, string)
             
             if dependee is None: continue
@@ -133,13 +132,18 @@ class Parser:
         submodule = self._parse_module_nodes(f'{module.name}.{name['name']}', path)
         module.submodules.append(submodule)
         
+        # The submodule is inserted inside the module, so its expand node is
+        # only initialized after the module's expand node. Similarly, the module
+        # can only close after the submodule has closed.
         self.dependencies.append(ImplicitDependency(module.close, submodule.close))
         self.dependencies.append(ImplicitDependency(submodule.expand, module.expand))
 
         for key, value in data.items():
             variable = self._find_var(submodule, f'var.{key}')
 
-            # Parse potential dependencies in module variables
+            # If the value is passed on to one of the submodule's variables, the
+            # dependency's origin is the variable itself and not the module's
+            # expand node.
             if variable is not None:
                 self._dependencies(module, filename, value, variable, submodule.expand)
     
@@ -152,10 +156,7 @@ class Parser:
         """
         provider, data = self._extract(data, 'name')
 
-        if 'alias' in data:
-            alias = data['alias']['value']
-        else :
-            alias = None
+        alias = data['alias']['value'] if 'alias' in data else None
 
         provider = Provider(module, provider['name'], alias, Range(
             filename,
@@ -184,7 +185,6 @@ class Parser:
             data['__end_column__']
         ))
         module.nodes.append(variable)
-        module.variables.append(variable)
         self.nodes.append(variable)
         self.node_map[variable.name] = variable
         
@@ -204,7 +204,6 @@ class Parser:
             data['__end_column__']
         ))
         module.nodes.append(output)
-        module.outputs.append(output)
         self.nodes.append(output)
         self.node_map[output.name] = output
 
@@ -273,7 +272,8 @@ class Parser:
         self.nodes.append(resource)
         self.node_map[resource.name] = resource
 
-        self.potential_dependencies.append((resource, resource, False, range, f'provider.{provider}', module))
+        # Resources depend on their providers.
+        self.future_dependencies.append((resource, resource, False, range, f'provider.{provider}', module))
         self._dependencies(module, filename, data, resource, resource)
 
     def _dependencies(self, module: Module, filename: str, data: Any, dependee: Node, declaration: Node, explicit: bool = False, metadata: Any = {}):
@@ -298,11 +298,11 @@ class Parser:
             matches = list(re.finditer(r'\${(.+?)}', data))
 
             for match in matches:
-                self.potential_dependencies.append((dependee, declaration, explicit, range, match[1], module))
+                self.future_dependencies.append((dependee, declaration, explicit, range, match[1], module))
             
             if len(matches) == 0 and explicit:
-                # In explicit dependencies, the whole string may be a dependency
-                self.potential_dependencies.append((dependee, declaration, explicit, range, data, module))
+                # In `depends_on`, the whole string may be a dependency
+                self.future_dependencies.append((dependee, declaration, explicit, range, data, module))
                 
         # Recursively parse lists
         elif type(data) == list:
@@ -355,16 +355,8 @@ class Parser:
         """
         match = re.match(r'module\.(.+?)\.(.+?)(\..+)?$', string)
         if not match: return None
-
-        module_name = f'{module.name}.{match[1]}'
-        output_name = f'{module_name}.output.{match[2]}'
-
-        m = next((m for m in module.submodules if m.name == module_name), None)
-        if m is None: return None
         
-        o = next((o for o in m.outputs if o.name == output_name), None)
-
-        return o
+        return self.node_map.get(f'{module.name}.{match[1]}.output.{match[2]}')
     
     def _find_module(self, module: Module, string: str) -> Node | None:
         """
