@@ -1,5 +1,5 @@
 from src.terraform_graph import Node, Dependency, ImplicitDependency, ExplicitDependency
-from src.graph import DAG, CycleError
+from src.graph import DAG, Edge, CycleError
 
 class DependencyAnalyzer:
     """
@@ -21,14 +21,14 @@ class DependencyAnalyzer:
             self.graph.node(node.id)
 
         for dependency in self.dependencies:
-            try: self.graph.edge(dependency.id, dependency.dependee.id, dependency.depended.id, False)
+            try: self.graph.edge(Edge(dependency.id, 0, dependency.dependee.id, dependency.depended.id))
             except CycleError: raise DependencyAnalyzerError(
                 f'the dependency graph has a cycle: cycle detected while adding {dependency}'
             )
 
         for dependency in self.dependencies:
             if type(dependency) is ImplicitDependency and dependency.dependee != dependency.declaration:
-                try: self.graph.edge(dependency.id, dependency.declaration.id, dependency.depended.id, True)
+                try: self.graph.edge(Edge(dependency.id, 1, dependency.declaration.id, dependency.depended.id))
                 except CycleError:
                     # We ignore this, since the declaration edge is not part of
                     # the actual dependency graph
@@ -58,17 +58,18 @@ class DependencyAnalyzer:
         possibly_redundant_dependencies: list[tuple[ExplicitDependency, list[Dependency]]] = list()
 
         for dependency in explicit_dependencies:
-            path = self.graph.path(dependency.dependee.id, dependency.depended.id)
+            path = self.graph.path(dependency.dependee.id, dependency.depended.id, [0])
             if path is not None:
-                used_avoids = path[1]
-                path = [self.id_to_dependency[id] for id in path[0]]
+                path = [self.id_to_dependency[id] for id in path]
+                redundant_dependencies.append((dependency, path))
 
-                if not used_avoids:
-                    redundant_dependencies.append((dependency, path))
-                else:
+            else:
+                path = self.graph.path(dependency.dependee.id, dependency.depended.id, [0, 1])
+                if path is not None:
+                    path = [self.id_to_dependency[id] for id in path]
                     possibly_redundant_dependencies.append((dependency, path))
 
-            self.graph.edge(dependency.id, dependency.dependee.id, dependency.depended.id, False)
+            self.graph.edge(Edge(dependency.id, 0, dependency.dependee.id, dependency.depended.id))
 
         return redundant_dependencies, possibly_redundant_dependencies
 
