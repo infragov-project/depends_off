@@ -8,8 +8,8 @@ class DependencyAnalyzer:
 
     def __init__(self, nodes: list[Node], dependencies: list[Dependency]):
         """
-        Initialize the dependency graph. A CycleError is raised if any of the
-        edges creates a cycle.
+        Initialize the dependency graph. An exception is raised if the graph has
+        cycles.
         """
         self.nodes = nodes
         self.dependencies = dependencies
@@ -19,6 +19,13 @@ class DependencyAnalyzer:
         self.graph = DAG()
         for node in self.nodes:
             self.graph.node(node.id)
+
+        # Dependencies are added as type 0 edges. Spurious dependencies ar
+        # eadded as type 1 edges. Spurious dependencies are dependencies that
+        # are not real but could be mistakenly identified, such as the one
+        # presented in the readme. They are created when the dependency
+        # declaration place is different from the dependee.
+        # https://github.com/infragov-project/depends_off/?tab=readme-ov-file#on-redundant-dependencies
 
         for dependency in self.dependencies:
             try: self.graph.edge(Edge(dependency.id, 0, dependency.dependee.id, dependency.depended.id))
@@ -58,17 +65,24 @@ class DependencyAnalyzer:
         possibly_redundant_dependencies: list[tuple[ExplicitDependency, list[Dependency]]] = list()
 
         for dependency in explicit_dependencies:
+
+            # Try to find a path using only real dependencies (type 0). In this
+            # case, the edge is guarateed to be redundant.
             path = self.graph.path(dependency.dependee.id, dependency.depended.id, [0])
             if path is not None:
                 path = [self.id_to_dependency[id] for id in path]
                 redundant_dependencies.append((dependency, path))
 
             else:
+                # Try to find a path using real and spurious dependencies (type
+                # 0 and 1). In this case, the edge might be redundant.
                 path = self.graph.path(dependency.dependee.id, dependency.depended.id, [0, 1])
                 if path is not None:
                     path = [self.id_to_dependency[id] for id in path]
                     possibly_redundant_dependencies.append((dependency, path))
 
+            # Add the edge back to the graph once checked, so that it can be
+            # used in the paths of subsequent dependencies.
             self.graph.edge(Edge(dependency.id, 0, dependency.dependee.id, dependency.depended.id))
 
         return redundant_dependencies, possibly_redundant_dependencies
