@@ -14,7 +14,7 @@ $ pip3 install -r requirements.txt
 
 ## Usage
 
-To parse the dependency graph of a given module and detect redundancies, provide the tool with the path to the directory containing the module (or leave empty for the current directory). There is also an option to output the inferred dependency graph in DOT and an option for SARIF output:
+To parse the dependency graph of a given module and detect redundancies, provide the tool with the path to the directory containing the module (or leave empty for the current directory). The `--graph` command can be used to to output the inferred dependency graph in DOT format, and the `--sarif` flag generate SARIF output.
 
 ```
 $ python3 main.py [directory] [--graph path.dot] [--sarif]
@@ -88,18 +88,10 @@ resource "aws_instance" "server" {
 }
 ```
 
-This is visible in the generated plan with and without the redundant dependency. If there were more items in the `app` module, they would be unnecessarily dependent on the variable, which could slow down deployment:
+This can be visualized in `depends_off`'s output graph (image below). The true dependency is from `var.subnet_id` to `output.subnet_id`, but the extra `depends_on` makes the whole `app` module dependent on the output variable. If there were more items in the `app` module, they would be unnecessarily dependent on the variable, which could slow down deployment:
 
-![Terraform plan without the redundant dependency](./docs/expected.png)
+![Terraform plan without the redundant dependency](./docs/graph.png)
 
-<p style="text-align: center;">
-    Figure 1: Terraform plan without the redundant dependency. The <code>module.app</code> expand node does not depend on the output variable.
-</p>
-
-![Terraform plan with the redundant dependency](./docs/redundant.png)
-
-<p style="text-align: center;">
-    Figure 2: Terraform plan with the redundant dependency. The <code>module.app</code> expand node depends on the output variable, and the entire dependency graph becomes less parallelizable.
-</p>
+_Figure 1: Dependency graph as detected by `depends_off`. The `module.app` expand depends on the output variable, and any resources that are not dependent on the subnet id would be unnecessarily delayed during deployment._
 
 Beyond efficiency concerns, duplicating code adds noise and complicates maintenance.
