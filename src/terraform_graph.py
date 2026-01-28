@@ -114,6 +114,13 @@ class Dependency:
     
     def __str__(self):
         return f'{self.dependee} -> {self.depended}'
+    
+    def str_with_range(self):
+        """
+        String representation of the dependency including the range.
+        """
+        if self.range is None: return str(self)
+        return f'{self} at {self.range}'
 
 class ImplicitDependency(Dependency):
     """
