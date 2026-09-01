@@ -46,28 +46,21 @@ class DependencyAnalyzer:
         Retrieve the redundant explicit dependencies in the graph.
         """
 
-        # Some of the edges will be removed, but we need to keep the original
-        # ordering of the graph
-        self.graph.toposort()
-
         # Remove the explicit edges and add them one by one such that, when an edge is
         # added, all the edges that an alternative path might have used have already
         # been added to the graph.
 
         explicit_dependencies = [d for d in self.dependencies if type(d) is ExplicitDependency]
 
-        for dependency in explicit_dependencies:
-            self.graph.remove_edge(dependency.id, dependency.dependee.id)
-
         # Check if any of the explicit dependencies is redundant
-        explicit_dependencies.sort(key = self._dependency_to_key)
         redundant_dependencies: list[tuple[ExplicitDependency, list[Dependency]]] = list()
         possibly_redundant_dependencies: list[tuple[ExplicitDependency, list[Dependency]]] = list()
 
         for dependency in explicit_dependencies:
+            self.graph.remove_edge(dependency.id, dependency.dependee.id)
 
-            # Try to find a path using only real dependencies (type 0). In this
-            # case, the edge is guarateed to be redundant.
+            # Try to find an alternative path using only real dependencies (type
+            # 0). In this case, the edge is guarateed to be redundant.
             path = self.graph.path(dependency.dependee.id, dependency.depended.id, [0])
             if path is not None:
                 path = [self.id_to_dependency[id] for id in path]
@@ -81,28 +74,11 @@ class DependencyAnalyzer:
                     path = [self.id_to_dependency[id] for id in path]
                     possibly_redundant_dependencies.append((dependency, path))
 
-            # Add the edge back to the graph once checked, so that it can be
-            # used in the paths of subsequent dependencies.
-            self.graph.edge(Edge(dependency.id, 0, dependency.dependee.id, dependency.depended.id))
+                # Since the dependency is not redundant, we have to add it back to the graph
+                self.graph.edge(Edge(dependency.id, 0, dependency.dependee.id, dependency.depended.id))
 
         return redundant_dependencies, possibly_redundant_dependencies
 
-    def _dependency_to_key(self, dependency: ExplicitDependency):
-        """
-        Transform a dependency into a sorting key, such that the edges can be
-        added one by one, and when one edge is inserted all the edges that an
-        alternative path might have used have already been added to the graph.
-        """
-
-        # An edge X = (a, b) comes before an endge Y = (c, d) if it might be
-        # part of a path from c to d. As such, a >= c and b <= d in the
-        # topological ordering.
-
-        a = self.graph.order(dependency.dependee.id)
-        b = self.graph.order(dependency.depended.id)
-
-        return (-a, b)
-    
     def export(self, filename: str):
         """
         Create a DOT file with the dependency graph.
@@ -119,6 +95,6 @@ class DependencyAnalyzer:
                 f.write(f'    {dependency.dependee.id} -> {dependency.depended.id} [style={style}];\n')
 
             f.write('}\n')
-    
+
 class DependencyAnalyzerError(Exception):
     pass

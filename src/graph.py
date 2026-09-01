@@ -25,20 +25,20 @@ class Graph:
         """
         self.nodes.add(node)
         self.edges[node] = list()
-    
+
     def edge(self, edge: Edge):
         """
         Add an edge to the graph
         """
         self.edges[edge.origin].append(edge)
-    
+
     def remove_edge(self, id: int, u: int):
         """
         Remove the edge from u that has a given id. While not strictly needed,
         the u parameter avoids searching all nodes for the edge.
         """
         self.edges[u] = [edge for edge in self.edges[u] if edge.id != id]
-    
+
     def path(self, u: int, v: int, allowed: list[int] | None = None):
         """
         Check if there is a path from u to v using the allowed edge types and
@@ -63,9 +63,9 @@ class Graph:
                 path = self._dfs(edge.destination, v, allowed, visited)
                 if path is not None:
                     return [edge.id] + path
-                
+
         return None
-    
+
 class DAG(Graph):
     """
     This class represents a Directed Acyclic Graph whose edges have an
@@ -80,50 +80,6 @@ class DAG(Graph):
         if self.path(edge.destination, edge.origin):
             raise CycleError()
         super().edge(edge)
-
-    def toposort(self):
-        """
-        Perform a topological sort of the graph, using all edge types. The order
-        of a vertex can be found using the order() method after the topological
-        sort.
-        """
-
-        # Topological sort is done using DFS. A DFS is made for each unvisited
-        # node, and the nodes visited in the DFS are recorded. In each of those
-        # segments, a node comes before all of its children. This segment is
-        # thus in reverse topological order. If a node was not visited once a
-        # new segment starts, none of the previous nodes points to it, but it
-        # may point to one of them. As such, each new segment comes before all
-        # previous ones in the topological sort. In practice, this is done by
-        # adding each of the segments in reverse order to a list, and reversing
-        # the list in the end.
-        visited: set[int] = set()
-        sorted: list[int] = list()
-
-        for node in self.nodes:
-            if node not in visited:
-                segment: list[int] = list()
-                self._toposort_dfs(node, visited, segment)
-                sorted += segment
-        
-        sorted.reverse()
-        self.topo_order = {node: i for i, node in enumerate(sorted)}
-    
-    def order(self, u: int):
-        """
-        Get the order of a node in the last topological sort
-        """
-        return self.topo_order[u]
-    
-    def _toposort_dfs(self, u: int, visited: set[int], segment: list[int]):
-        visited.add(u)
-
-        for edge in self.edges[u]:
-            if edge.destination not in visited:
-                self._toposort_dfs(edge.destination, visited, segment)
-
-        segment.append(u)
-        return segment
 
 class CycleError(Exception):
     pass
