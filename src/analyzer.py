@@ -20,8 +20,8 @@ class DependencyAnalyzer:
         for node in self.nodes:
             self.graph.node(node.id)
 
-        # Dependencies are added as type 0 edges. Spurious dependencies ar
-        # eadded as type 1 edges. Spurious dependencies are dependencies that
+        # Dependencies are added as type 0 edges. Spurious dependencies are
+        # added as type 1 edges. Spurious dependencies are dependencies that
         # are not real but could be mistakenly identified, such as the one
         # presented in the readme. They are created when the dependency
         # declaration place is different from the dependee.
@@ -46,13 +46,8 @@ class DependencyAnalyzer:
         Retrieve the redundant explicit dependencies in the graph.
         """
 
-        # Remove the explicit edges and add them one by one such that, when an edge is
-        # added, all the edges that an alternative path might have used have already
-        # been added to the graph.
-
         explicit_dependencies = [d for d in self.dependencies if type(d) is ExplicitDependency]
 
-        # Check if any of the explicit dependencies is redundant
         redundant_dependencies: list[tuple[ExplicitDependency, list[Dependency]]] = list()
         possibly_redundant_dependencies: list[tuple[ExplicitDependency, list[Dependency]]] = list()
 
@@ -60,7 +55,7 @@ class DependencyAnalyzer:
             self.graph.remove_edge(dependency.id, dependency.dependee.id)
 
             # Try to find an alternative path using only real dependencies (type
-            # 0). In this case, the edge is guarateed to be redundant.
+            # 0). In this case, the edge is guaranteed to be redundant.
             path = self.graph.path(dependency.dependee.id, dependency.depended.id, [0])
             if path is not None:
                 path = [self.id_to_dependency[id] for id in path]
@@ -74,7 +69,9 @@ class DependencyAnalyzer:
                     path = [self.id_to_dependency[id] for id in path]
                     possibly_redundant_dependencies.append((dependency, path))
 
-                # Since the dependency is not redundant, we have to add it back to the graph
+                # Since the dependency is not redundant, we have to add it back
+                # to the graph, so that it can be used to detect other redundant
+                # dependencies.
                 self.graph.edge(Edge(dependency.id, 0, dependency.dependee.id, dependency.depended.id))
 
         return redundant_dependencies, possibly_redundant_dependencies
